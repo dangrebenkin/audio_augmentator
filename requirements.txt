@@ -1,0 +1,8 @@
+setuptools==67.6.1
+numpy~=1.23.5
+pydub~=0.25.1
+datasets~=2.11.0
+pysndfx~=0.3.6
+requests~=2.28.2
+tqdm~=4.65.0
+librosa~=0.10.0.post2
