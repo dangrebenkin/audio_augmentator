@@ -114,7 +114,7 @@ class Augmentator:
                         if b64encode_output:
                             augmented_audio_bytes = b64encode(augmented_audio_bytes).decode("utf-8")
                         os.remove(augmented_audio_filename)
-                        augmented_audiofiles[noise_type] = augmented_audio_bytes
+                        augmented_audiofiles[augmented_audio_filename] = augmented_audio_bytes
                 except BaseException as err:
                     augmented_audiofiles[augmented_audio_filename] = str(err)
         return augmented_audiofiles
