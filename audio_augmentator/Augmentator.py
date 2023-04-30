@@ -11,7 +11,7 @@ from pysndfx import AudioEffectsChain
 class Augmentator:
 
     def __init__(self,
-                 noises_dataset: str,
+                 noises_dataset: str = None,
                  to_augment: bool = False,
                  decibels: float = 10.0,
                  household_noises: bool = False,

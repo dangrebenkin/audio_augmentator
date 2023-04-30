@@ -2,6 +2,15 @@
 
 Audio augmentation and reverberation tool.
 
+### Instalation
+
+```
+git clone https://github.com/dangrebenkin/audio_augmentator
+cd audio_augmentator
+pip install -r requirements.txt
+python setup.py install
+```
+
 ### Usage steps
 
 ##### **1. Create _Augmentator_ object:**
