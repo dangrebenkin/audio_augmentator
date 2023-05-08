@@ -107,8 +107,9 @@ class Augmentator:
                                                                  channels=1)
                         amplitude_difference = audio_to_augment_object.dBFS - noise_to_mix_object.dBFS
                         noise_to_mix_object = noise_to_mix_object.apply_gain(amplitude_difference)
+                        noise_to_mix_object = noise_to_mix_object.apply_gain(-self.noise_decibels)
                         augmented_audio_object = audio_to_augment_object.overlay(
-                            noise_to_mix_object.apply_gain(-self.noise_decibels),
+                            noise_to_mix_object,
                             loop=True)
                         augmented_audio_bytes = augmented_audio_object.get_array_of_samples().tobytes()
                         if b64encode_output:
