@@ -64,14 +64,20 @@ class Augmentator:
         if self.to_reverb:
             reverbed_audio_name = f'{filename}_reverbed.wav'
             try:
-                audio_to_reverb, _ = librosa.load(audio_to_reverb_path, sr=self.sample_rate)
-                good_audio_array = np.round(audio_to_reverb * 32767.0).astype(np.int16)
-                reverbed_audio_array = self.reverberator(good_audio_array,
-                                                         channels_out=1)
-                reverbed_audio_bytes = reverbed_audio_array.tobytes()
+                audio_to_reverb, _ = librosa.load(audio_to_reverb_path, sr=16000)
+                reverbed_audio_array = self.reverberator(audio_to_reverb,
+                                                         sample_in=16000,
+                                                         sample_out=16000)
+                reverbed_audio_array = np.round(reverbed_audio_array * 32767.0).astype(np.int16)
+                reverbed_audio_object = pydub.AudioSegment(data=reverbed_audio_array.tobytes(),
+                                                           sample_width=2,
+                                                           frame_rate=16000,
+                                                           channels=1)
+                reverbed_audio_bytes = reverbed_audio_object.get_array_of_samples().tobytes()
                 if b64encode_output:
                     reverbed_audio_bytes = b64encode(reverbed_audio_bytes).decode("utf-8")
                 reverbed_result[reverbed_audio_name] = reverbed_audio_bytes
+
             except BaseException as err:
                 reverbed_result[reverbed_audio_name] = str(err)
         return reverbed_result
