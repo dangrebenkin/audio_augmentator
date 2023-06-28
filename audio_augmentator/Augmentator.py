@@ -1,5 +1,5 @@
 from base64 import b64encode
-from pathlib import Path
+
 import librosa
 import numpy as np
 import pydub
@@ -26,18 +26,15 @@ class Augmentator:
                  stereo_depth: int = 100,
                  pre_delay: int = 20,
                  wet_gain: int = 0,
-                 wet_only: bool = False,
+                 wet_only: bool = False):
 
-                 sample_rate: int = 16000):
-
-        self.sample_rate = sample_rate
         self.to_augment = to_augment
         self.to_reverb = to_reverb
         self.noise_decibels = decibels
-        self.parameters = {"household_noises": household_noises,
-                           "pets_noises": pets_noises,
-                           "speech_noises": speech_noises,
-                           "background_music_noises": background_music_noise}
+        self.household_noises = household_noises
+        self.pets_noises = pets_noises
+        self.speech_noises = speech_noises
+        self.background_music_noise = background_music_noise
 
         if self.to_reverb:
             self.reverberator = (
@@ -55,53 +52,44 @@ class Augmentator:
             self.noise_types = list(self.noises_dataset.keys())
 
     def reverberate(self,
-                    audio_to_reverb_path: str,
-                    b64encode_output: bool = False) -> dict:
+                    audio_array: np.ndarray,
+                    b64encode_output: bool = False) -> list:
 
-        reverbed_result = {}
-        filename = Path(audio_to_reverb_path).stem
-
+        reverbed_result = []
         if self.to_reverb:
-            reverbed_audio_name = f'{filename}_reverbed.wav'
             try:
-                audio_to_reverb, _ = librosa.load(audio_to_reverb_path, sr=16000)
-                reverbed_audio_array = self.reverberator(audio_to_reverb,
-                                                         sample_in=16000,
-                                                         sample_out=16000)
-                reverbed_audio_array = np.round(reverbed_audio_array * 32767.0).astype(np.int16)
-                reverbed_audio_object = pydub.AudioSegment(data=reverbed_audio_array.tobytes(),
-                                                           sample_width=2,
-                                                           frame_rate=16000,
-                                                           channels=1)
-                reverbed_audio_bytes = reverbed_audio_object.get_array_of_samples().tobytes()
+                good_audio_array = np.round(audio_array * 32767.0).astype(np.int16)
+                reverbed_audio_array = self.reverberator(good_audio_array,
+                                                         channels_out=1)
+                reverbed_audio_bytes = reverbed_audio_array.tobytes()
                 if b64encode_output:
                     reverbed_audio_bytes = b64encode(reverbed_audio_bytes).decode("utf-8")
-                reverbed_result[reverbed_audio_name] = reverbed_audio_bytes
 
+                reverbed_result.append(reverbed_audio_bytes)
             except BaseException as err:
-                reverbed_result[reverbed_audio_name] = str(err)
+                reverbed_result.append(str(err))
         return reverbed_result
 
     def augmentate(self,
-                   audio_to_augment_path: str,
-                   b64encode_output: bool = False) -> dict:
+                   audio_path: str,
+                   b64encode_output: bool = False) -> list:
 
-        augmented_audiofiles = {}
-        filename = Path(audio_to_augment_path).stem
+        augmented_audiofiles = []
+        parameters = {"household_noises": self.household_noises,
+                      "pets_noises": self.pets_noises,
+                      "speech_noises": self.speech_noises,
+                      "background_music_noises": self.background_music_noise}
 
         if self.to_augment:
-            for noise_type in self.parameters.keys():
-                augmented_audio_filename = f'{filename}_{noise_type}_{str(int(self.noise_decibels))}.wav'
+            for noise_type in parameters.keys():
                 try:
-                    if self.parameters[noise_type]:
-
-                        audio_to_augment, _ = librosa.load(audio_to_augment_path, sr=self.sample_rate)
+                    if parameters[noise_type]:
+                        audio_to_augment, _ = librosa.load(audio_path, sr=16000)
                         good_audio_array = np.round(audio_to_augment * 32767.0).astype(np.int16)
                         audio_to_augment_object = pydub.AudioSegment(data=good_audio_array.tobytes(),
                                                                      sample_width=2,
                                                                      frame_rate=16000,
                                                                      channels=1)
-                        audio_to_augment_object.set_frame_rate(self.sample_rate)
                         noises_source = self.noises_dataset[noise_type]
                         dataset_size = noises_source.num_rows
                         noise_to_mix_id = random.choice(range(0, dataset_size))
@@ -120,7 +108,7 @@ class Augmentator:
                         augmented_audio_bytes = augmented_audio_object.get_array_of_samples().tobytes()
                         if b64encode_output:
                             augmented_audio_bytes = b64encode(augmented_audio_bytes).decode("utf-8")
-                        augmented_audiofiles[augmented_audio_filename] = augmented_audio_bytes
+                        augmented_audiofiles.append(augmented_audio_bytes)
                 except BaseException as err:
-                    augmented_audiofiles[augmented_audio_filename] = str(err)
+                    augmented_audiofiles.append(str(err))
         return augmented_audiofiles
