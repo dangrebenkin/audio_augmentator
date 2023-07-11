@@ -1,4 +1,4 @@
-# Audio_augmentator
+# Audio Augmentator
 
 Audio augmentation and reverberation tool.
 
@@ -10,7 +10,7 @@ cd audio_augmentator
 pip install -r requirements.txt
 python setup.py install
 ```
-**The noises dataset will be downloaded automatically during installation.**
+**The noises dataset will be downloaded automatically during installation. Use absolute path of downloaded dataset as noises_dataset= value.**
 
 ### Usage steps
 
