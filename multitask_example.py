@@ -8,12 +8,11 @@ import pydub
 from audio_augmentator.Augmentator import Augmentator
 
 cores_number = cpu_count()
-augmentation_tool = Augmentator(decibels=5.0,
-                                # 'to_reverb': True,
+augmentation_tool = Augmentator(noises_dataset='/home/daniil/Документы/projects/audio_augmentator/noises_dataset',
+                                decibels=5.0,
                                 to_augment=True,
                                 speech_noises=True,
-                                stereo_depth=10,
-                                # 'background_music_noises': True
+                                stereo_depth=10
                                 )
 pool = Pool(processes=cores_number)
 file_names = ['test_1.wav, test_2.wav']

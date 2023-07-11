@@ -5,6 +5,7 @@ import subprocess
 
 class PostInstallCommand(install):
     def run(self):
+        subprocess.call(['pip', 'install', '-r', 'requirements.txt'])
         subprocess.call(['python', './audio_augmentator/load_corpus.py'])
         install.run(self)
 
@@ -17,7 +18,7 @@ setup(
     author='Daniel Grebenkin',
     author_email='d.grebenkin@g.nsu.ru',
     license='Apache License Version 2.0',
-    keywords=['wav', 'audio', 'augmetation', 'reverberation'],
+    keywords=['wav', 'audio', 'augmentation', 'reverberation'],
     packages=find_packages(),
     python_requires=r'>=3.8.0',
     cmdclass={

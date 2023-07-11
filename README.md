@@ -19,7 +19,7 @@ python setup.py install
 ```
 from audio_augmentator.Augmentator import Augmentator
 
-augmentator_object = Augmentator()
+augmentator_object = Augmentator(noises_dataset=<path to dataset>)
 ```
 
 Set `augmentator_object` parameters depending on audio augmentation type: augmentation with different types of 
@@ -41,7 +41,8 @@ of noises to get the result)(**optional**), default = False.
 
 Example of `augmentator_object` specified for augmentation:
 ```
-augmentator_object_1 = Augmentator(to_augment=True,
+augmentator_object_1 = Augmentator(noises_dataset=<path to dataset>,
+                                   to_augment=True,
                                    decibels=5.0,
                                    household_noises=True,
                                    background_music_noise=True) 

@@ -12,7 +12,6 @@ def load_dataset_from_yandex_disk(load_url,
                                   dataset_name=""):
     if dataset_name == "":
         dataset_name = load_url
-
     final_url = base_url + urlencode(dict(public_key=load_url))
     response = requests.get(final_url)
     download_url = response.json()['href']
@@ -32,7 +31,9 @@ def load_dataset_from_yandex_disk(load_url,
 
             z = ZipFile(bytes_input)
             z.extractall(dataset_path)
-            print(f"Dataset {dataset_name} successfully loaded and saved to '{dataset_path}'")
+            full_path = os.path.abspath(dataset_path)
+            print(f"Dataset {dataset_name} successfully loaded and saved to '{full_path}. "
+                  f"Use it as noises_dataset= argument'")
             return True
         except BadZipFile as ex:
             print('Dataset downloading error: {}'.format(ex))
@@ -42,7 +43,7 @@ def load_dataset_from_yandex_disk(load_url,
 datasets_info = {
     "noises_corpus": {
         "link": "https://disk.yandex.ru/d/yyqFNL9MR1JoSw",
-        "path": "./audio_augmentator/data/",
+        "path": "./noises_dataset",
         "checkpoint_name": "dataset_dict.json"
     },
 }

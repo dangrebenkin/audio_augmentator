@@ -11,10 +11,11 @@ from pysndfx import AudioEffectsChain
 
 
 class Augmentator:
-    noises_dataset = DatasetDict.load_from_disk('./data/')
-    noise_types = list(noises_dataset.keys())
 
     def __init__(self,
+
+                 noises_dataset: str,
+
                  to_augment: bool = False,
                  to_mix: bool = False,
                  decibels: float = 10.0,
@@ -33,6 +34,7 @@ class Augmentator:
                  wet_only: bool = False
                  ):
 
+        self.noises_dataset = DatasetDict.load_from_disk(noises_dataset)
         self.sample_rate = 16000
         self.nperseg = int(self.sample_rate / 100)
         self.interval = int(3.0 * self.sample_rate)
@@ -54,9 +56,6 @@ class Augmentator:
         self.pre_delay = pre_delay
         self.wet_gain = wet_gain
         self.wet_only = wet_only
-
-    def update_object(self):
-        self.__init__()
 
     def reverberate(self,
                     audio_to_reverb_path: str,
