@@ -10,6 +10,7 @@ cd audio_augmentator
 pip install -r requirements.txt
 python setup.py install
 ```
+**The noises dataset will be downloaded automatically during installation.**
 
 ### Usage steps
 
@@ -29,25 +30,24 @@ background noises (step 1.1) or reverberation effect (step 1.2).
 Augmentation parameters set:
 
 * `to_augment`: enable augmentation mode (**always required for augmentation**), default = False;
-* `noises_dataset`: path to noises corpora, you should [download](https://disk.yandex.ru/d/o4dEtHOtR6BGgw) it ,
-  extract zip-file and write a path to extracted dataset as argument value, **always required for augmentation**;
 * `decibels`: a difference (dBS) of between input audio signal volume and noise volume (e.g. if `decibels=5.0` it means
   that noise level will be 10 dBS lower than original audio volume in augmented audio), (**optional**) default = 10.0;
 * `household_noises`: set True to get audio augmented with household noises (**optional**), default = False;
 * `pets_noises`: set True to get audio augmented with pets noises (**optional**), default = False;
 * `speech_noises`: set True to get audio augmented with speech (**optional**), default = False;
 * `background_music_noise`: set True to get audio augmented with music noises (**optional**), default = False.
+* `to_mix`: set True to get audio mixed with several types of noises (you should set True to at least two types 
+of noises to get the result)(**optional**), default = False.
 
 Example of `augmentator_object` specified for augmentation:
 ```
 augmentator_object_1 = Augmentator(to_augment=True,
-                                 noises_dataset='path/to/dataset/',
-                                 decibels=5.0,
-                                 household_noises=True,
-                                 background_music_noise=True) 
+                                   decibels=5.0,
+                                   household_noises=True,
+                                   background_music_noise=True) 
 ```
 The parameters set of this example will let you get two files as output: original file augmented with household noises 
-and music noises. The noise from corpora is chosen randomly.
+and music noises. The noise from corpora and augmentation way ('loop', 'random_position') is chosen randomly.
 
 ##### **1.2 Reverberation (`Augmentator(to_reverb=True)`)**
 
