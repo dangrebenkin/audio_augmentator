@@ -9,7 +9,8 @@ git clone https://github.com/dangrebenkin/audio_augmentator
 cd audio_augmentator
 python setup.py install
 ```
-**The noises dataset will be downloaded automatically during installation. Use absolute path of downloaded dataset as noises_dataset= value.**
+**The noises dataset will be downloaded automatically during installation. Use absolute path of downloaded dataset as 
+noises_dataset=<absolute path of downloaded dataset>.**
 
 ### Usage steps
 
