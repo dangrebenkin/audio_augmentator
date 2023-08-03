@@ -35,7 +35,7 @@ Augmentation parameters set:
 * `household_noises`: set True to get audio augmented with household noises (**optional**), default = False;
 * `pets_noises`: set True to get audio augmented with pets noises (**optional**), default = False;
 * `speech_noises`: set True to get audio augmented with speech (**optional**), default = False;
-* `background_music_noise`: set True to get audio augmented with music noises (**optional**), default = False.
+* `background_music_noises`: set True to get audio augmented with music noises (**optional**), default = False.
 * `to_mix`: set True to get audio mixed with several types of noises (you should set True to at least two types 
 of noises to get the result)(**optional**), default = False.
 
@@ -80,15 +80,4 @@ augmented_sound = augmentator_object_1.augmentate(audio_to_augment_path='wav_to_
 reverbed_sound = augmentator_object_2.reverberate(audio_to_reverb_path='wav_to_reverb.wav')
 augmented_sound  # {'<wav_to_augment>_household_noises_5.wav': <bytes array>, '<wav_to_augment>_background_music_noise_5.wav': <bytes array>}
 reverbed_sound  # {'<wav_to_reverb>_reverbed.wav': <bytes array>}
-```
-
-You can also get augmented/reverbed files as strings:
-
-```
-augmented_sound = augmentator_object_1.augmentate(audio_to_augment_path='wav_to_augment.wav',
-                                                  b64encode_output=True)
-reverbed_sound = augmentator_object_2.reverberate(audio_to_reverb_path='wav_to_reverb.wav',
-                                                  b64encode_output=True)
-augmented_sound  # {'<wav_to_augment>_household_noises_5.wav': <string>, '<wav_to_augment>_background_music_noise_5.wav': <string>}
-reverbed_sound  # {'<wav_to_reverb>_reverbed.wav': <string>}
 ```

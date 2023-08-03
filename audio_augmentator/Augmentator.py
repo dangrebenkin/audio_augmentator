@@ -1,7 +1,9 @@
-import pydub
+import math
+import torch
 import random
 import struct
-import librosa
+import pickle
+import torchaudio
 import numpy as np
 from pathlib import Path
 from scipy import signal
@@ -34,7 +36,10 @@ class Augmentator:
                  wet_only: bool = False
                  ):
 
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.noises_dataset = DatasetDict.load_from_disk(noises_dataset)
+        self.resampler = torchaudio.transforms.Resample(new_freq=16000).to(self.device)
+        self.overlayer = torchaudio.transforms.AddNoise().to(self.device)
         self.sample_rate = 16000
         self.nperseg = int(self.sample_rate / 100)
         self.interval = int(3.0 * self.sample_rate)
@@ -56,20 +61,19 @@ class Augmentator:
         self.pre_delay = pre_delay
         self.wet_gain = wet_gain
         self.wet_only = wet_only
+        self.reverberator = (AudioEffectsChain()
+                             .reverb(reverberance=self.reverberance,
+                                     hf_damping=self.hf_damping,
+                                     room_scale=self.room_scale,
+                                     stereo_depth=self.stereo_depth,
+                                     pre_delay=self.pre_delay,
+                                     wet_gain=self.wet_gain,
+                                     wet_only=self.wet_only)
+                             )
 
     def reverberate(self,
                     audio_to_reverb_path: str,
                     b64encode_output: bool = False) -> dict:
-        reverberator = (
-            AudioEffectsChain()
-            .reverb(reverberance=self.reverberance,
-                    hf_damping=self.hf_damping,
-                    room_scale=self.room_scale,
-                    stereo_depth=self.stereo_depth,
-                    pre_delay=self.pre_delay,
-                    wet_gain=self.wet_gain,
-                    wet_only=self.wet_only)
-        )
 
         reverbed_result = {}
         filename = Path(audio_to_reverb_path).stem
@@ -77,38 +81,61 @@ class Augmentator:
         if self.to_reverb:
             reverbed_audio_name = f'{filename}_reverbed.wav'
             try:
-                audio_to_reverb, _ = librosa.load(audio_to_reverb_path, sr=self.sample_rate)
-                reverbed_audio_array = reverberator(audio_to_reverb,
-                                                    sample_in=self.sample_rate,
-                                                    sample_out=self.sample_rate)
+                audio_to_reverb, org_sr = torchaudio.load(audio_to_reverb_path, normalize=True)
+                audio_to_reverb.to(self.device)
+                self.resampler.orig_freq = org_sr
+                audio_to_reverb = self.resampler(audio_to_reverb)
+                reverbed_audio_array = self.reverberator(audio_to_reverb[0].numpy(),
+                                                         sample_in=self.sample_rate,
+                                                         sample_out=self.sample_rate)
                 reverbed_audio_array = np.round(reverbed_audio_array * 32767.0).astype(np.int16)
-                reverbed_audio_object = pydub.AudioSegment(data=reverbed_audio_array.tobytes(),
-                                                           sample_width=2,
-                                                           frame_rate=self.sample_rate,
-                                                           channels=1)
-                reverbed_audio_bytes = reverbed_audio_object.get_array_of_samples().tobytes()
+                reverbed_audio_array = np.float32(reverbed_audio_array)
+                reverbed_audio_tensor = torch.unsqueeze(torch.from_numpy(reverbed_audio_array), 0)
+                reverbed_audio_bytes = pickle.dumps(reverbed_audio_tensor)
                 if b64encode_output:
                     reverbed_audio_bytes = b64encode(reverbed_audio_bytes).decode("utf-8")
                 reverbed_result[reverbed_audio_name] = reverbed_audio_bytes
             except BaseException as err:
                 reverbed_result[reverbed_audio_name] = str(err)
+
         return reverbed_result
 
     def augmentation_overlay(self,
-                             original_audio_object: pydub.audio_segment.AudioSegment,
-                             prepared_noise_audio_object: pydub.audio_segment.AudioSegment) -> pydub.audio_segment.AudioSegment:
+                             original_audio_tensor: torch.tensor,
+                             prepared_noise_audio_tensor: torch.tensor) -> torch.tensor:
         overlay_result = None
         random_choice = random.choice(self.two_ways_of_overlay)
-        original_audio_duration = original_audio_object.duration_seconds
-        noise_audio_duration = prepared_noise_audio_object.duration_seconds
+        audio_to_augment_duration = len(original_audio_tensor[0]) / float(self.sample_rate)
+        noise_file_duration = len(prepared_noise_audio_tensor[0]) / float(self.sample_rate)
+        audio_to_augment_tensor_length = len(original_audio_tensor[0])
+        original_audio_tensor.to(self.device)
+
         if random_choice == 'loop':
-            overlay_result = original_audio_object.overlay(prepared_noise_audio_object,
-                                                           loop=True)
+            repeat_times = math.ceil(audio_to_augment_duration / noise_file_duration)
+            loop_cat = prepared_noise_audio_tensor.repeat(1, repeat_times)
+            loop_cat_to_insert = torch.unsqueeze(loop_cat[0][0:audio_to_augment_tensor_length], 0)
+            loop_cat_to_insert.to(self.device)
+            overlay_result = self.overlayer(original_audio_tensor,
+                                            noise=loop_cat_to_insert,
+                                            snr=torch.tensor([self.decibels]))
+
         elif random_choice == 'random_position':
-            bound = 1 - (noise_audio_duration / original_audio_duration)
+            bound = 1 - (noise_file_duration / audio_to_augment_duration)
             random_position = random.uniform(0.01, bound)
-            overlay_result = original_audio_object.overlay(prepared_noise_audio_object,
-                                                           position=random_position * len(original_audio_object))
+            start_position = int(random_position * (audio_to_augment_tensor_length - 1))
+            end_position = int(start_position + (len(prepared_noise_audio_tensor[0])))
+            if end_position > audio_to_augment_tensor_length - 1:
+                difference = end_position - audio_to_augment_tensor_length
+                cut_position = len(prepared_noise_audio_tensor[0]) - 1 - difference
+                prepared_noise_audio_tensor = prepared_noise_audio_tensor[0][0:cut_position]
+                end_position = audio_to_augment_tensor_length - 1
+            padded_noise_tensor = torch.zeros(1, audio_to_augment_tensor_length)
+            padded_noise_tensor[0][start_position:end_position] = prepared_noise_audio_tensor
+            padded_noise_tensor.to(self.device)
+            overlay_result = self.overlayer(original_audio_tensor,
+                                            noise=padded_noise_tensor,
+                                            snr=torch.tensor([self.decibels]))
+
         return overlay_result
 
     def signal_energy_noise_search(self,
@@ -134,16 +161,6 @@ class Augmentator:
         for time_ind in range(spectrogram.shape[0]):
             energy = np.square(sound_frames[time_ind]).mean()
             energy_values.append(energy)
-
-        # local minimums search
-        energy_minimums = []
-        for i in range(len(energy_values) - 1):
-            if (energy_values[i] < energy_values[i - 1]) and (energy_values[i] < energy_values[i + 1]):
-                energy_minimums.append(i)
-        energy_minimums.append(len(energy_values) - 1)
-        minimums = [i * self.nperseg for i in energy_minimums]
-        if minimums[0] != 0:
-            minimums.insert(0, 0)
 
         # local minimums search
         energy_minimums_indices = []
@@ -182,8 +199,7 @@ class Augmentator:
         return noise_fragment
 
     def augmentate(self,
-                   audio_to_augment_path: str,
-                   b64encode_output: bool = False) -> dict:
+                   audio_to_augment_path: str) -> dict:
         noises_types_dict = {"household_noises": self.household_noises,
                              "pets_noises": self.pets_noises,
                              "speech_noises": self.speech_noises,
@@ -191,71 +207,73 @@ class Augmentator:
 
         augmented_audiofiles = {}
         filename = Path(audio_to_augment_path).stem
-        noise_to_mix_objects = []
+        noise_to_mix_tensors = []
 
         if self.to_augment:
 
             # audio
-            audio_to_augment, _ = librosa.load(audio_to_augment_path, sr=self.sample_rate)
-            good_audio_array = np.round(audio_to_augment * 32767.0).astype(np.int16)
-            audio_to_augment_object = pydub.AudioSegment(data=good_audio_array.tobytes(),
-                                                         sample_width=2,
-                                                         frame_rate=self.sample_rate,
-                                                         channels=1)
-            audio_to_augment_object.set_frame_rate(self.sample_rate)
-            if self.to_mix:
-                noise_to_mix_objects.append(audio_to_augment_object)
+            audio_to_augment, org_sr = torchaudio.load(audio_to_augment_path,
+                                                       normalize=True)
+            audio_to_augment.to(self.device)
+            self.resampler.orig_freq = org_sr
+            audio_to_augment_tensor = self.resampler(audio_to_augment)
 
             for noise_type in noises_types_dict.keys():
                 augmented_audio_filename = f'{filename}_{noise_type}_{str(int(self.decibels))}.wav'
                 try:
                     if noises_types_dict[noise_type]:
 
-                        # noise
+                        # noise processing
                         noises_source = self.noises_dataset[noise_type]
-                        dataset_size = noises_source.num_rows
-                        noise_to_mix_id = random.choice(range(0, dataset_size))
-                        noise_to_mix_original_array = noises_source['audio'][noise_to_mix_id]['array']
-                        noise_file_duration = len(noise_to_mix_original_array) / float(self.sample_rate)
+                        dataset_last_row_index = noises_source.num_rows - 1
+                        noise_to_mix_id = random.choice(range(0, dataset_last_row_index))
+                        noise_to_mix_array = noises_source[noise_to_mix_id]['audio']['array']
+                        noise_file_duration = len(noise_to_mix_array) / float(self.sample_rate)
                         if noise_file_duration > 3.0:
-                            noise_to_mix_original_array = self.signal_energy_noise_search(noise_to_mix_original_array)
-                        noise_to_mix_array = np.round(noise_to_mix_original_array * 32768.0).astype(np.int16)
-                        noise_to_mix_object = pydub.AudioSegment(data=noise_to_mix_array.tobytes(),
-                                                                 sample_width=2,
-                                                                 frame_rate=self.sample_rate,
-                                                                 channels=1)
-                        amplitude_difference = audio_to_augment_object.dBFS - noise_to_mix_object.dBFS
-                        noise_to_mix_object = noise_to_mix_object.apply_gain(amplitude_difference)
-                        noise_to_mix_object = noise_to_mix_object.apply_gain(-self.decibels)
+                            noise_to_mix_array = self.signal_energy_noise_search(noise_to_mix_array)
+                        noise_to_mix_array = np.float32(noise_to_mix_array)
+                        noise_to_mix_tensor = torch.unsqueeze(torch.from_numpy(noise_to_mix_array), 0)
 
                         # augmentation
                         if self.to_mix:
-                            noise_to_mix_objects.append(noise_to_mix_object)
-                        elif not self.to_mix:
-                            augmented_audio_object = self.augmentation_overlay(
-                                original_audio_object=audio_to_augment_object,
-                                prepared_noise_audio_object=noise_to_mix_object)
-                            augmented_audio_bytes = augmented_audio_object.get_array_of_samples().tobytes()
-                            if b64encode_output:
-                                augmented_audio_bytes = b64encode(augmented_audio_bytes).decode("utf-8")
-                            augmented_audiofiles[augmented_audio_filename] = augmented_audio_bytes
+                            noise_to_mix_tensors.append(noise_to_mix_tensor)
+
+                        augmented_audio_tensor = self.augmentation_overlay(
+                            original_audio_tensor=audio_to_augment_tensor,
+                            prepared_noise_audio_tensor=noise_to_mix_tensor)
+                        augmented_audio_bytes = pickle.dumps(augmented_audio_tensor)
+                        # augmented_audio_bytes = io.BytesIO()
+                        # torch.save(augmented_audio_tensor, augmented_audio_bytes)
+                        # augmented_audio_bytes = augmented_audio_bytes.getvalue()
+                        augmented_audiofiles[augmented_audio_filename] = augmented_audio_bytes
+
                 except BaseException as err:
                     augmented_audiofiles[augmented_audio_filename] = str(err)
 
             if self.to_mix:
+                noise_to_mix_tensors.append(audio_to_augment_tensor)
+                filename_mixed = f'{filename}_mixed.wav'
                 try:
-                    if len(noise_to_mix_objects) < 3:
-                        augmented_audiofiles['mixed'] = 'You chose no noise types to mix or you chose only one type.'
-                    elif len(noise_to_mix_objects) >= 3:
-                        noises_mix = noise_to_mix_objects[1]
-                        for n in noise_to_mix_objects[2::]:
-                            noises_mix = noises_mix.overlay(n, loop=True)
-                        mixed_audio_object = self.augmentation_overlay(original_audio_object=noise_to_mix_objects[0],
-                                                                       prepared_noise_audio_object=noises_mix)
-                        augmented_audio_bytes = mixed_audio_object.get_array_of_samples().tobytes()
-                        if b64encode_output:
-                            augmented_audio_bytes = b64encode(augmented_audio_bytes).decode("utf-8")
-                        augmented_audiofiles['mixed'] = augmented_audio_bytes
+                    if len(noise_to_mix_tensors) < 3:
+                        augmented_audiofiles[
+                            filename_mixed] = 'You chose no noise types to mix or you chose only one type.'
+                    elif len(noise_to_mix_tensors) >= 3:
+                        noises_mix = noise_to_mix_tensors[1]
+                        for n in noise_to_mix_tensors[2::]:
+                            n = n[:, : noises_mix.shape[1]]
+                            noises_mix.to(self.device)
+                            n.to(self.device)
+                            noises_mix = self.overlayer(noises_mix,
+                                                        noise=n,
+                                                        snr=torch.tensor([0]))
+                        mixed_audio_tensor = self.augmentation_overlay(original_audio_tensor=noise_to_mix_tensors[0],
+                                                                       prepared_noise_audio_tensor=noises_mix)
+                        augmented_audio_bytes = pickle.dumps(mixed_audio_tensor)
+                        # augmented_audio_bytes = io.BytesIO()
+                        # torch.save(mixed_audio_tensor, augmented_audio_bytes)
+                        # augmented_audio_bytes = augmented_audio_bytes.getvalue()
+                        augmented_audiofiles[filename_mixed] = augmented_audio_bytes
                 except BaseException as err:
-                    augmented_audiofiles['mixed'] = str(err)
+                    augmented_audiofiles[filename_mixed] = str(err)
+
         return augmented_audiofiles
