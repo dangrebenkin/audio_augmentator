@@ -1,5 +1,6 @@
 import pickle
 import torchaudio
+
 from audio_augmentator.Augmentator import Augmentator
 
 augmentator_object = Augmentator(noises_dataset='./data',
@@ -9,7 +10,18 @@ augmentator_object = Augmentator(noises_dataset='./data',
                                  pets_noises=True,
                                  speech_noises=True,
                                  background_music_noises=True)
-augmentation_results_dict = augmentator_object.augmentate('test.wav')
+
+# на вход можно подать звуковой файл в 3 вариантах: строковый путь
+# к файлу; в формате torch.tensor; в формате numpy.ndarray
+# частота дискретизации входного файла по умолчанию 16 кГц, но можно указать ее вручную,
+# передав ее значение в качестве второго аргумента augmentator_object.augmentate
+# (или для augmentator_object.reverberate)
+
+audio_to_augment = './test.wav'
+audio_to_augment, org_sr = torchaudio.load(audio_to_augment, normalize=True)  # | torch.tensor
+# audio_to_augment = audio_to_augment.detach().cpu().numpy() | numpy.ndarray
+
+augmentation_results_dict = augmentator_object.augmentate(audio_to_augment, org_sr)
 for i in augmentation_results_dict.keys():
     augmented_audio_tensor = pickle.loads(augmentation_results_dict[i])
     torchaudio.save(f'{i}', augmented_audio_tensor, 16000)

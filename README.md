@@ -76,8 +76,15 @@ augmentator_object_2 = Augmentator(to_reverb=True)
 Use reverberate() or augmentate() to get outputs:
 
 ```
-augmented_sound = augmentator_object_1.augmentate(audio_to_augment_path='wav_to_augment.wav')
-reverbed_sound = augmentator_object_2.reverberate(audio_to_reverb_path='wav_to_reverb.wav')
+augmented_sound = augmentator_object_1.augmentate(audio_to_augment_input='wav_to_augment.wav', file_original_sample_rate=16000)
+reverbed_sound = augmentator_object_2.reverberate(audio_to_reverb_input='wav_to_reverb.wav', file_original_sample_rate=16000)
 augmented_sound  # {'<wav_to_augment>_household_noises_5.wav': <bytes array>, '<wav_to_augment>_background_music_noise_5.wav': <bytes array>}
 reverbed_sound  # {'<wav_to_reverb>_reverbed.wav': <bytes array>}
 ```
+`audio_to_augment_input=` and `audio_to_reverb_input=` values can be get in the following format:
+1) string path to audiofile
+2) torch.tensor
+3) numpy.ndarray
+
+`file_original_sample_rate=` is 16000 by default, but it should be changes if it differs.
+
