@@ -29,7 +29,6 @@ background noises (step 1.1) or reverberation effect (step 1.2).
 
 Augmentation parameters set:
 
-* `to_augment`: enable augmentation mode (**always required for augmentation**), default = False;
 * `decibels`: a difference (dBS) of between input audio signal volume and noise volume (e.g. if `decibels=5.0` it means
   that noise level will be 10 dBS lower than original audio volume in augmented audio), (**optional**) default = 10.0;
 * `household_noises`: set True to get audio augmented with household noises (**optional**), default = False;
@@ -39,10 +38,12 @@ Augmentation parameters set:
 * `to_mix`: set True to get audio mixed with several types of noises (you should set True to at least two types 
 of noises to get the result)(**optional**), default = False.
 
+**(!) You have to set True to one of the noises types (`household_noises`, `pets_noises`, `speech_noises`, `background_music_noises`) parameters
+to get augmentated data.**
+
 Example of `augmentator_object` specified for augmentation:
 ```
 augmentator_object_1 = Augmentator(noises_dataset=<path to dataset>,
-                                   to_augment=True,
                                    decibels=5.0,
                                    household_noises=True,
                                    background_music_noise=True) 
@@ -54,7 +55,7 @@ and music noises. The noise from corpora and augmentation way ('loop', 'random_p
 
 Reverberation parameters set:
 
-* `to_reverb`: enable reverberation mode (**always required for reverberation**), default = False;
+* `to_reverb`: enable getting reverberation results (**always required for reverberation**), default = False;
 * `reverberance`: (**optional**) default = 50;
 * `hf_damping`: (**optional**) default = 50;
 * `room_scale`: (**optional**) default = 100;
@@ -68,12 +69,13 @@ Reverberation was implemented with using pysndfx library (https://github.com/car
 Example (using default reverb values):
 
 ```
-augmentator_object_2 = Augmentator(to_reverb=True) 
+augmentator_object_2 = Augmentator(to_reverb=True,
+                                   wet_only=True) 
 ```
 
 ##### **2. Augmentation | reverberation outputs**
 
-Use reverberate() or augmentate() to get outputs:
+Use reverberate() or augmentate() to get outputs (see _simple_example.py_ and _mulitask_example.py_):
 
 ```
 augmented_sound = augmentator_object_1.augmentate(audio_to_augment_input='wav_to_augment.wav', file_original_sample_rate=16000)
@@ -81,10 +83,10 @@ reverbed_sound = augmentator_object_2.reverberate(audio_to_reverb_input='wav_to_
 augmented_sound  # {'<wav_to_augment>_household_noises_5.wav': <bytes array>, '<wav_to_augment>_background_music_noise_5.wav': <bytes array>}
 reverbed_sound  # {'<wav_to_reverb>_reverbed.wav': <bytes array>}
 ```
-`audio_to_augment_input=` and `audio_to_reverb_input=` values can be get in the following format:
-1) string path to audiofile
-2) torch.tensor
-3) numpy.ndarray
+**(!)** `audio_to_augment_input=` and `audio_to_reverb_input=` values can be get in the following format:
+1) string path to audiofile;
+2) torch.tensor;
+3) numpy.ndarray.
 
-`file_original_sample_rate=` is 16000 by default, but it should be changes if it differs.
+**(!)** ``file_original_sample_rate=` is 16000 by default, but it should be changes if it differs.
 

@@ -8,7 +8,6 @@ import torchaudio
 import numpy as np
 from pathlib import Path
 from scipy import signal
-from base64 import b64encode
 from datasets import DatasetDict
 from pysndfx import AudioEffectsChain
 
@@ -18,14 +17,12 @@ class Augmentator:
     def __init__(self,
 
                  noises_dataset: str,
-
-                 to_augment: bool = False,
-                 to_mix: bool = False,
                  decibels: float = 10.0,
                  household_noises: bool = False,
                  pets_noises: bool = False,
                  speech_noises: bool = False,
                  background_music_noises: bool = False,
+                 to_mix: bool = False,
 
                  to_reverb: bool = False,
                  reverberance: int = 50,
@@ -46,7 +43,6 @@ class Augmentator:
         self.interval = int(3.0 * self.sample_rate)
         self.two_ways_of_overlay = ['loop', 'random_position']
 
-        self.to_augment = to_augment
         self.decibels = decibels
         self.household_noises = household_noises
         self.pets_noises = pets_noises
@@ -73,7 +69,7 @@ class Augmentator:
                              )
 
     def reverberate(self,
-                    audio_to_reverb_input: str,
+                    audio_to_reverb_input,
                     file_original_sample_rate: int = 16000) -> dict:
 
         reverbed_result = {}
@@ -227,7 +223,6 @@ class Augmentator:
                              "background_music_noises": self.background_music_noises}
 
         augmented_audiofiles = {}
-
         input_format = type(audio_to_augment_input).__name__
         audio_to_augment = None
         filename = ''.join(random.choices(string.ascii_lowercase, k=5))
@@ -247,14 +242,15 @@ class Augmentator:
                 if audio_to_augment.size()[0] != 1:
                     audio_to_augment = torch.unsqueeze(audio_to_augment, 0)
             else:
-                augmented_audiofiles['input format error'] = f'Expected str, tensor or numpy.ndarray format, got {input_format}'
+                augmented_audiofiles['input format error'] = (f'Expected str, tensor or numpy.ndarray '
+                                                              f'format, got {input_format}')
                 return augmented_audiofiles
         except BaseException as err:
             augmented_audiofiles['input format error'] = str(err)
 
         noise_to_mix_tensors = []
 
-        if self.to_augment:
+        if True in list(noises_types_dict.values()):
 
             # audio
             audio_to_augment.to(self.device)

@@ -6,7 +6,6 @@ from audio_augmentator.Augmentator import Augmentator
 cores_number = cpu_count()
 augmentation_tool = Augmentator(noises_dataset='/home/user/documents/projects/audio_augmentator/noises_dataset',
                                 decibels=5.0,
-                                to_augment=True,
                                 speech_noises=True
                                 )
 pool = Pool(processes=cores_number)

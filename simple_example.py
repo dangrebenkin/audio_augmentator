@@ -4,7 +4,6 @@ import torchaudio
 from audio_augmentator.Augmentator import Augmentator
 
 augmentator_object = Augmentator(noises_dataset='./data',
-                                 to_augment=True,
                                  decibels=20.0,
                                  household_noises=True,
                                  pets_noises=True,
