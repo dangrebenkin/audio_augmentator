@@ -85,7 +85,7 @@ class Augmentator:
             elif input_format == 'Tensor':
                 audio_to_reverb = audio_to_reverb_input
                 if audio_to_reverb.size()[0] != 1:
-                    audio_to_reverb = torch.unsqueeze(torch.from_numpy(audio_to_reverb), 0)
+                    audio_to_reverb = torch.unsqueeze(audio_to_reverb, 0)
             elif input_format == 'ndarray':
                 audio_to_reverb = np.float32(audio_to_reverb_input)
                 audio_to_reverb = torch.from_numpy(audio_to_reverb)
@@ -235,7 +235,7 @@ class Augmentator:
             elif input_format == 'Tensor':
                 audio_to_augment = audio_to_augment_input
                 if audio_to_augment.size()[0] != 1:
-                    audio_to_augment = torch.unsqueeze(torch.from_numpy(audio_to_augment), 0)
+                    audio_to_augment = torch.unsqueeze(audio_to_augment, 0)
             elif input_format == 'ndarray':
                 audio_to_augment = np.float32(audio_to_augment_input)
                 audio_to_augment = torch.from_numpy(audio_to_augment)
