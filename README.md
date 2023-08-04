@@ -80,10 +80,11 @@ Use reverberate() or augmentate() to get outputs (see _simple_example.py_ and _m
 ```
 augmented_sound = augmentator_object_1.augmentate(audio_to_augment_input='wav_to_augment.wav', file_original_sample_rate=16000)
 reverbed_sound = augmentator_object_2.reverberate(audio_to_reverb_input='wav_to_reverb.wav', file_original_sample_rate=16000)
-augmented_sound  # {'<wav_to_augment>_household_noises_5.wav': <bytes array>, '<wav_to_augment>_background_music_noise_5.wav': <bytes array>}
-reverbed_sound  # {'<wav_to_reverb>_reverbed.wav': <bytes array>}
+augmented_sound  # {'<wav_to_augment>_household_noises_5.wav': <torch.tensor>, 
+                    '<wav_to_augment>_background_music_noise_5.wav': <torch.tensor>}
+reverbed_sound  # {'<wav_to_reverb>_reverbed.wav': <torch.tensor>}
 ```
-**(!)** `audio_to_augment_input=` and `audio_to_reverb_input=` values can be get in the following format:
+**(!)** `audio_to_augment_input=` and `audio_to_reverb_input=` values can be got in the following format:
 1) string path to audiofile;
 2) torch.tensor;
 3) numpy.ndarray.
