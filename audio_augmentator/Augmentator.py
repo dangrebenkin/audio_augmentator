@@ -2,7 +2,6 @@ import math
 import torch
 import random
 import struct
-import pickle
 import string
 import torchaudio
 import numpy as np
@@ -109,8 +108,7 @@ class Augmentator:
                 reverbed_audio_array = np.round(reverbed_audio_array * 32767.0).astype(np.int16)
                 reverbed_audio_array = np.float32(reverbed_audio_array)
                 reverbed_audio_tensor = torch.unsqueeze(torch.from_numpy(reverbed_audio_array), 0)
-                reverbed_audio_bytes = pickle.dumps(reverbed_audio_tensor)
-                reverbed_result[reverbed_audio_name] = reverbed_audio_bytes
+                reverbed_result[reverbed_audio_name] = reverbed_audio_tensor
             except BaseException as err:
                 reverbed_result[reverbed_audio_name] = str(err)
 
@@ -280,8 +278,7 @@ class Augmentator:
                         augmented_audio_tensor = self.augmentation_overlay(
                             original_audio_tensor=audio_to_augment_tensor,
                             prepared_noise_audio_tensor=noise_to_mix_tensor)
-                        augmented_audio_bytes = pickle.dumps(augmented_audio_tensor)
-                        augmented_audiofiles[augmented_audio_filename] = augmented_audio_bytes
+                        augmented_audiofiles[augmented_audio_filename] = augmented_audio_tensor
 
                 except BaseException as err:
                     augmented_audiofiles[augmented_audio_filename] = str(err)
@@ -304,8 +301,7 @@ class Augmentator:
                                                         snr=torch.tensor([0]))
                         mixed_audio_tensor = self.augmentation_overlay(original_audio_tensor=noise_to_mix_tensors[0],
                                                                        prepared_noise_audio_tensor=noises_mix)
-                        augmented_audio_bytes = pickle.dumps(mixed_audio_tensor)
-                        augmented_audiofiles[filename_mixed] = augmented_audio_bytes
+                        augmented_audiofiles[filename_mixed] = mixed_audio_tensor
                 except BaseException as err:
                     augmented_audiofiles[filename_mixed] = str(err)
 

@@ -1,4 +1,3 @@
-import pickle
 import torchaudio
 from multiprocessing import Pool, cpu_count
 from audio_augmentator.Augmentator import Augmentator
@@ -17,5 +16,4 @@ pool.close()
 pool.join()
 
 for i in all_results.keys():
-    augmented_audio_tensor = pickle.loads(all_results[i])
-    torchaudio.save(f'{i}', augmented_audio_tensor, 16000)
+    torchaudio.save(f'{i}', all_results[i], 16000)
