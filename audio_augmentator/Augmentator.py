@@ -106,7 +106,6 @@ class Augmentator:
                 reverbed_audio_array = self.reverberator(audio_to_reverb[0].numpy(),
                                                          sample_in=self.sample_rate,
                                                          sample_out=self.sample_rate)
-                reverbed_audio_array = np.round(reverbed_audio_array * 32767.0).astype(np.int16)
                 reverbed_audio_array = np.float32(reverbed_audio_array)
                 reverbed_audio_tensor = torch.unsqueeze(torch.from_numpy(reverbed_audio_array), 0)
                 reverbed_result[reverbed_audio_name] = reverbed_audio_tensor
