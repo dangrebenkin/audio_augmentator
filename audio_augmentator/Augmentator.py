@@ -91,7 +91,8 @@ class Augmentator:
                 if audio_to_reverb.size()[0] != 1:
                     audio_to_reverb = torch.unsqueeze(audio_to_reverb, 0)
             else:
-                reverbed_result['input format error'] = f'Expected str, tensor or numpy.ndarray format, got {input_format}'
+                reverbed_result['input format error'] = (f'Expected str, tensor or numpy.ndarray format,'
+                                                         f' got {input_format}')
                 return reverbed_result
         except BaseException as err:
             reverbed_result['input format error'] = str(err)
@@ -135,7 +136,10 @@ class Augmentator:
 
         elif random_choice == 'random_position':
             bound = 1 - (noise_file_duration / audio_to_augment_duration)
-            random_position = random.uniform(0.01, bound)
+            if bound <= 0:
+                random_position = 0
+            else:
+                random_position = random.uniform(0.01, bound)
             start_position = int(random_position * (audio_to_augment_tensor_length - 1))
             end_position = int(start_position + (len(prepared_noise_audio_tensor[0])))
             if end_position > audio_to_augment_tensor_length - 1:
@@ -266,6 +270,7 @@ class Augmentator:
                         noise_to_mix_id = random.choice(range(0, dataset_last_row_index))
                         noise_to_mix_array = noises_source[noise_to_mix_id]['audio']['array']
                         noise_file_duration = len(noise_to_mix_array) / float(self.sample_rate)
+
                         if noise_file_duration > 3.0:
                             noise_to_mix_array = self.signal_energy_noise_search(noise_to_mix_array)
                         noise_to_mix_array = np.float32(noise_to_mix_array)
