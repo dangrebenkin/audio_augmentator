@@ -268,6 +268,9 @@ class Augmentator:
             self.resampler.orig_freq = org_sr
             audio_to_augment_tensor = self.resampler(audio_to_augment)
 
+            if self.to_mix:
+                noise_to_mix_tensors.append(audio_to_augment_tensor)
+
             for noise_type in noises_types_dict.keys():
                 augmented_audio_filename = f'{filename}_{noise_type}_{str(int(self.decibels))}.wav'
                 try:
@@ -313,7 +316,6 @@ class Augmentator:
                     augmented_audiofiles[augmented_audio_filename] = str(err)
 
             if self.to_mix:
-                noise_to_mix_tensors.append(audio_to_augment_tensor)
                 filename_mixed = f'{filename}_mixed.wav'
                 try:
                     if len(noise_to_mix_tensors) < 3:
