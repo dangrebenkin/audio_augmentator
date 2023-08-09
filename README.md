@@ -89,5 +89,5 @@ reverbed_sound  # {'<wav_to_reverb>_reverbed.wav': <torch.tensor>}
 2) torch.tensor;
 3) numpy.ndarray.
 
-**(!)** ``file_original_sample_rate=` is 16000 by default, but it should be changes if it differs.
+**(!)** `file_original_sample_rate=` is 16000 by default, but it should be changes if it differs.
 

@@ -41,6 +41,7 @@ class Augmentator:
         self.nperseg = int(self.sample_rate / 100)
         self.interval = int(3.0 * self.sample_rate)
         self.two_ways_of_overlay = ['loop', 'random_position']
+        self.window_size_samples = 1024
 
         self.decibels = decibels
         self.household_noises = household_noises
@@ -66,6 +67,10 @@ class Augmentator:
                                      wet_gain=self.wet_gain,
                                      wet_only=self.wet_only)
                              )
+        self.model, self.utils = torch.hub.load(repo_or_dir='snakers4/silero-vad',
+                                                model='silero_vad',
+                                                force_reload=False,
+                                                onnx=False)
 
     def reverberate(self,
                     audio_to_reverb_input,
@@ -222,6 +227,11 @@ class Augmentator:
                              "pets_noises": self.pets_noises,
                              "speech_noises": self.speech_noises,
                              "background_music_noises": self.background_music_noises}
+        (get_speech_timestamps,
+         save_audio,
+         read_audio,
+         VADIterator,
+         collect_chunks) = self.utils
 
         augmented_audiofiles = {}
         input_format = type(audio_to_augment_input).__name__
@@ -270,10 +280,25 @@ class Augmentator:
                         noise_to_mix_array = noises_source[noise_to_mix_id]['audio']['array']
                         noise_file_duration = len(noise_to_mix_array) / float(self.sample_rate)
 
+                        noise_to_mix_tensor = None
+
                         if noise_file_duration > 3.0:
-                            noise_to_mix_array = self.signal_energy_noise_search(noise_to_mix_array)
-                        noise_to_mix_array = np.float32(noise_to_mix_array)
-                        noise_to_mix_tensor = torch.unsqueeze(torch.from_numpy(noise_to_mix_array), 0)
+                            if noise_type == "speech_noises":
+                                noise_to_mix_tensor = torch.from_numpy(np.float32(noise_to_mix_array))
+                                speech_timestamps = get_speech_timestamps(audio=noise_to_mix_tensor,
+                                                                          model=self.model,
+                                                                          sampling_rate=self.sample_rate,
+                                                                          threshold=0.3)
+                                if len(speech_timestamps) >= 1:
+                                    noise_to_mix_tensor = collect_chunks(speech_timestamps, noise_to_mix_tensor)
+                                noise_to_mix_tensor = torch.unsqueeze(noise_to_mix_tensor, 0)
+                            elif noise_type != "speech_noises":
+                                noise_to_mix_array = self.signal_energy_noise_search(noise_to_mix_array)
+                                noise_to_mix_array = np.float32(noise_to_mix_array)
+                                noise_to_mix_tensor = torch.unsqueeze(torch.from_numpy(noise_to_mix_array), 0)
+                        elif noise_file_duration <= 3.0:
+                            noise_to_mix_array = np.float32(noise_to_mix_array)
+                            noise_to_mix_tensor = torch.unsqueeze(torch.from_numpy(noise_to_mix_array), 0)
 
                         # augmentation
                         if self.to_mix:
