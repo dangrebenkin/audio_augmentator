@@ -73,7 +73,7 @@ class Augmentator:
                                                 onnx=False)
 
     def tensor_normalization(self,
-                             input_tensor: torch.tensor):
+                             input_tensor: torch.tensor) -> torch.tensor:
         if torch.max(torch.abs(input_tensor)).item() > 1.0:
             input_tensor /= torch.max(torch.abs(input_tensor))
         return input_tensor
