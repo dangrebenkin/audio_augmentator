@@ -297,8 +297,7 @@ class Augmentator:
                                 noise_to_mix_tensor = self.tensor_normalization(noise_to_mix_tensor)
                                 speech_timestamps = get_speech_timestamps(audio=noise_to_mix_tensor,
                                                                           model=self.model,
-                                                                          sampling_rate=self.sample_rate,
-                                                                          threshold=0.3)
+                                                                          sampling_rate=self.sample_rate)
                                 if len(speech_timestamps) >= 1:
                                     noise_to_mix_tensor = collect_chunks(speech_timestamps, noise_to_mix_tensor)
                                 noise_to_mix_tensor = torch.unsqueeze(noise_to_mix_tensor, 0)
