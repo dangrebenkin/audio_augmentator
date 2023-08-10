@@ -5,6 +5,7 @@ Audio augmentation and reverberation tool.
 ### Instalation
 
 ```
+sudo apt-get install sox
 git clone https://github.com/dangrebenkin/audio_augmentator
 cd audio_augmentator
 python setup.py install
