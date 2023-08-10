@@ -42,7 +42,7 @@ def load_dataset_from_yandex_disk(load_url,
 
 datasets_info = {
     "noises_corpus": {
-        "link": "https://disk.yandex.ru/d/yyqFNL9MR1JoSw",
+        "link": "https://disk.yandex.ru/d/z24vJQQiuSZO4w",
         "path": "./noises_dataset",
         "checkpoint_name": "dataset_dict.json"
     },
