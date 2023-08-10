@@ -72,47 +72,72 @@ class Augmentator:
                                                 force_reload=False,
                                                 onnx=False)
 
+    def tensor_normalization(self,
+                             input_tensor: torch.tensor):
+        if torch.max(torch.abs(input_tensor)).item() > 1.0:
+            input_tensor /= torch.max(torch.abs(input_tensor))
+        return input_tensor
+
+    def input_data_preprocessing(self,
+                                 input_data,
+                                 temp_filename: str,
+                                 temp_sample_rate) -> torch.tensor:
+
+        input_format = type(input_data).__name__
+        final_filename = temp_filename
+        defined_sample_rate = temp_sample_rate
+
+        try:
+            if input_format == 'str':
+                final_filename = Path(input_data).stem
+                preprocessed_data, defined_sample_rate = torchaudio.load(input_data, normalize=True)
+            elif input_format == 'Tensor':
+                preprocessed_data = input_data
+                if preprocessed_data.size()[0] != 1:
+                    preprocessed_data = torch.unsqueeze(preprocessed_data, 0)
+            elif input_format == 'ndarray':
+                preprocessed_data = np.float32(input_data)
+                preprocessed_data = torch.from_numpy(preprocessed_data)
+                if preprocessed_data.size()[0] != 1:
+                    preprocessed_data = torch.unsqueeze(preprocessed_data, 0)
+            else:
+                preprocessed_data = (f'Expected str, tensor or numpy.ndarray format,'
+                                     f'got {input_format}')
+                return preprocessed_data, final_filename
+        except BaseException as err:
+            preprocessed_data = str(err)
+            return preprocessed_data, final_filename
+
+        preprocessed_data = self.tensor_normalization(preprocessed_data)
+        preprocessed_data.to(self.device)
+        self.resampler.orig_freq = defined_sample_rate
+        preprocessed_data = self.resampler(preprocessed_data)
+
+        return preprocessed_data, final_filename
+
     def reverberate(self,
                     audio_to_reverb_input,
                     file_original_sample_rate: int = 16000) -> dict:
 
         reverbed_result = {}
-        input_format = type(audio_to_reverb_input).__name__
-        filename = ''.join(random.choices(string.ascii_lowercase, k=5))
-        org_sr = file_original_sample_rate
-        audio_to_reverb = None
-
-        try:
-            if input_format == 'str':
-                filename = Path(audio_to_reverb_input).stem
-                audio_to_reverb, org_sr = torchaudio.load(audio_to_reverb_input, normalize=True)
-            elif input_format == 'Tensor':
-                audio_to_reverb = audio_to_reverb_input
-                if audio_to_reverb.size()[0] != 1:
-                    audio_to_reverb = torch.unsqueeze(audio_to_reverb, 0)
-            elif input_format == 'ndarray':
-                audio_to_reverb = np.float32(audio_to_reverb_input)
-                audio_to_reverb = torch.from_numpy(audio_to_reverb)
-                if audio_to_reverb.size()[0] != 1:
-                    audio_to_reverb = torch.unsqueeze(audio_to_reverb, 0)
-            else:
-                reverbed_result['input format error'] = (f'Expected str, tensor or numpy.ndarray format,'
-                                                         f' got {input_format}')
-                return reverbed_result
-        except BaseException as err:
-            reverbed_result['input format error'] = str(err)
+        generated_filename = ''.join(random.choices(string.ascii_lowercase, k=5))
 
         if self.to_reverb:
+
+            audio_to_reverb, filename = self.input_data_preprocessing(input_data=audio_to_reverb_input,
+                                                                      temp_filename=generated_filename,
+                                                                      temp_sample_rate=file_original_sample_rate)
+            if type(audio_to_reverb).__name__ == 'str':
+                reverbed_result[filename] = audio_to_reverb
+                return reverbed_result
             reverbed_audio_name = f'{filename}_reverbed.wav'
             try:
-                audio_to_reverb.to(self.device)
-                self.resampler.orig_freq = org_sr
-                audio_to_reverb = self.resampler(audio_to_reverb)
                 reverbed_audio_array = self.reverberator(audio_to_reverb[0].numpy(),
                                                          sample_in=self.sample_rate,
                                                          sample_out=self.sample_rate)
                 reverbed_audio_array = np.float32(reverbed_audio_array)
                 reverbed_audio_tensor = torch.unsqueeze(torch.from_numpy(reverbed_audio_array), 0)
+                reverbed_audio_tensor = self.tensor_normalization(reverbed_audio_tensor)
                 reverbed_result[reverbed_audio_name] = reverbed_audio_tensor
             except BaseException as err:
                 reverbed_result[reverbed_audio_name] = str(err)
@@ -234,39 +259,20 @@ class Augmentator:
          collect_chunks) = self.utils
 
         augmented_audiofiles = {}
-        input_format = type(audio_to_augment_input).__name__
-        audio_to_augment = None
-        filename = ''.join(random.choices(string.ascii_lowercase, k=5))
-        org_sr = file_original_sample_rate
-
-        try:
-            if input_format == 'str':
-                filename = Path(audio_to_augment_input).stem
-                audio_to_augment, org_sr = torchaudio.load(audio_to_augment_input, normalize=True)
-            elif input_format == 'Tensor':
-                audio_to_augment = audio_to_augment_input
-                if audio_to_augment.size()[0] != 1:
-                    audio_to_augment = torch.unsqueeze(audio_to_augment, 0)
-            elif input_format == 'ndarray':
-                audio_to_augment = np.float32(audio_to_augment_input)
-                audio_to_augment = torch.from_numpy(audio_to_augment)
-                if audio_to_augment.size()[0] != 1:
-                    audio_to_augment = torch.unsqueeze(audio_to_augment, 0)
-            else:
-                augmented_audiofiles['input format error'] = (f'Expected str, tensor or numpy.ndarray '
-                                                              f'format, got {input_format}')
-                return augmented_audiofiles
-        except BaseException as err:
-            augmented_audiofiles['input format error'] = str(err)
+        generated_filename = ''.join(random.choices(string.ascii_lowercase, k=5))
 
         noise_to_mix_tensors = []
 
         if True in list(noises_types_dict.values()):
 
             # audio
-            audio_to_augment.to(self.device)
-            self.resampler.orig_freq = org_sr
-            audio_to_augment_tensor = self.resampler(audio_to_augment)
+            (audio_to_augment_tensor,
+             filename) = self.input_data_preprocessing(input_data=audio_to_augment_input,
+                                                       temp_filename=generated_filename,
+                                                       temp_sample_rate=file_original_sample_rate)
+            if type(audio_to_augment_tensor).__name__ == 'str':
+                augmented_audiofiles[filename] = audio_to_augment_tensor
+                return augmented_audiofiles
 
             if self.to_mix:
                 noise_to_mix_tensors.append(audio_to_augment_tensor)
@@ -288,6 +294,7 @@ class Augmentator:
                         if noise_file_duration > 3.0:
                             if noise_type == "speech_noises":
                                 noise_to_mix_tensor = torch.from_numpy(np.float32(noise_to_mix_array))
+                                noise_to_mix_tensor = self.tensor_normalization(noise_to_mix_tensor)
                                 speech_timestamps = get_speech_timestamps(audio=noise_to_mix_tensor,
                                                                           model=self.model,
                                                                           sampling_rate=self.sample_rate,
@@ -303,6 +310,8 @@ class Augmentator:
                             noise_to_mix_array = np.float32(noise_to_mix_array)
                             noise_to_mix_tensor = torch.unsqueeze(torch.from_numpy(noise_to_mix_array), 0)
 
+                        noise_to_mix_tensor = self.tensor_normalization(noise_to_mix_tensor)
+
                         # augmentation
                         if self.to_mix:
                             noise_to_mix_tensors.append(noise_to_mix_tensor)
@@ -310,6 +319,7 @@ class Augmentator:
                         augmented_audio_tensor = self.augmentation_overlay(
                             original_audio_tensor=audio_to_augment_tensor,
                             prepared_noise_audio_tensor=noise_to_mix_tensor)
+                        augmented_audio_tensor = self.tensor_normalization(augmented_audio_tensor)
                         augmented_audiofiles[augmented_audio_filename] = augmented_audio_tensor
 
                 except BaseException as err:
@@ -332,6 +342,7 @@ class Augmentator:
                                                         snr=torch.tensor([0]))
                         mixed_audio_tensor = self.augmentation_overlay(original_audio_tensor=noise_to_mix_tensors[0],
                                                                        prepared_noise_audio_tensor=noises_mix)
+                        mixed_audio_tensor = self.tensor_normalization(mixed_audio_tensor)
                         augmented_audiofiles[filename_mixed] = mixed_audio_tensor
                 except BaseException as err:
                     augmented_audiofiles[filename_mixed] = str(err)

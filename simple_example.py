@@ -1,9 +1,8 @@
-import pickle
 import torchaudio
 
 from audio_augmentator.Augmentator import Augmentator
 
-augmentator_object = Augmentator(noises_dataset='./data',
+augmentator_object = Augmentator(noises_dataset='noises_dataset',
                                  decibels=20.0,
                                  household_noises=True,
                                  pets_noises=True,
@@ -16,10 +15,11 @@ augmentator_object = Augmentator(noises_dataset='./data',
 # передав ее значение в качестве второго аргумента augmentator_object.augmentate
 # (или для augmentator_object.reverberate)
 
-audio_to_augment = './test.wav'
+audio_to_augment = 'test.wav'
 audio_to_augment, org_sr = torchaudio.load(audio_to_augment, normalize=True)  # | torch.tensor
 # audio_to_augment = audio_to_augment.detach().cpu().numpy() | numpy.ndarray
 
 augmentation_results_dict = augmentator_object.augmentate(audio_to_augment, org_sr)
 for i in augmentation_results_dict.keys():
     torchaudio.save(f'{i}', augmentation_results_dict[i], 16000)
+
