@@ -2,12 +2,13 @@ import torchaudio
 
 from audio_augmentator.Augmentator import Augmentator
 
-augmentator_object = Augmentator(noises_dataset='noises_dataset',
+augmentator_object = Augmentator(noises_dataset='noises_corpora',
                                  decibels=20.0,
                                  household_noises=True,
                                  pets_noises=True,
                                  speech_noises=True,
-                                 background_music_noises=True)
+                                 background_music_noises=True,
+                                 to_mix=True)
 
 # на вход можно подать звуковой файл в 3 вариантах: строковый путь
 # к файлу; в формате torch.tensor; в формате numpy.ndarray

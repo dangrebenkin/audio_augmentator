@@ -171,9 +171,9 @@ class Augmentator:
                 random_position = random.uniform(0.01, bound)
             start_position = int(random_position * (audio_to_augment_tensor_length - 1))
             end_position = int(start_position + (len(prepared_noise_audio_tensor[0])))
-            if end_position > audio_to_augment_tensor_length - 1:
+            if end_position > audio_to_augment_tensor_length:
                 difference = end_position - audio_to_augment_tensor_length
-                cut_position = len(prepared_noise_audio_tensor[0]) - 1 - difference
+                cut_position = len(prepared_noise_audio_tensor[0]) - difference - 1
                 prepared_noise_audio_tensor = prepared_noise_audio_tensor[0][0:cut_position]
                 end_position = audio_to_augment_tensor_length - 1
             padded_noise_tensor = torch.zeros(1, audio_to_augment_tensor_length)
@@ -333,12 +333,21 @@ class Augmentator:
                     elif len(noise_to_mix_tensors) >= 3:
                         noises_mix = noise_to_mix_tensors[1]
                         for n in noise_to_mix_tensors[2::]:
-                            n = n[:, : noises_mix.shape[1]]
                             noises_mix.to(self.device)
-                            n.to(self.device)
+                            noises_mix_length = len(noises_mix[0])
+                            end_position = len(n[0])
+                            if end_position > noises_mix_length:
+                                difference = end_position - noises_mix_length
+                                cut_position = end_position - difference - 1
+                                n = n[0][0:cut_position]
+                                end_position = noises_mix_length - 1
+                            template_zero_tensor = torch.zeros(1, noises_mix_length)
+                            template_zero_tensor[0][0:end_position] = n
+                            template_zero_tensor.to(self.device)
                             noises_mix = self.overlayer(noises_mix,
-                                                        noise=n,
+                                                        noise=template_zero_tensor,
                                                         snr=torch.tensor([0]))
+
                         mixed_audio_tensor = self.augmentation_overlay(original_audio_tensor=noise_to_mix_tensors[0],
                                                                        prepared_noise_audio_tensor=noises_mix)
                         mixed_audio_tensor = self.tensor_normalization(mixed_audio_tensor)
