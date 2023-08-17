@@ -6,7 +6,7 @@ import subprocess
 class PostInstallCommand(install):
     def run(self):
         subprocess.call(['pip', 'install', '-r', 'requirements.txt'])
-        subprocess.call(['python', './audio_augmentator/load_corpus.py'])
+        subprocess.call(['python', './audio_augmentator/load_files.py'])
         install.run(self)
 
 

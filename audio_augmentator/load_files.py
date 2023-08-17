@@ -16,7 +16,7 @@ def load_dataset_from_yandex_disk(load_url,
     response = requests.get(final_url)
     download_url = response.json()['href']
 
-    print(f"Start downloading corpus {load_url}")
+    print(f"Start downloading file {load_url}")
     response = requests.get(download_url, stream=True)
     total = int(response.headers.get('content-length', 0))
 
@@ -32,11 +32,10 @@ def load_dataset_from_yandex_disk(load_url,
             z = ZipFile(bytes_input)
             z.extractall(dataset_path)
             full_path = os.path.abspath(dataset_path)
-            print(f"Dataset {dataset_name} successfully loaded and saved to '{full_path}. "
-                  f"Use it as noises_dataset= argument'")
+            print(f"File {dataset_name} successfully loaded and saved to '{full_path}. ")
             return True
         except BadZipFile as ex:
-            print('Dataset downloading error: {}'.format(ex))
+            print('Downloading error: {}'.format(ex))
             return False
 
 
@@ -45,6 +44,11 @@ datasets_info = {
         "link": "https://disk.yandex.ru/d/z24vJQQiuSZO4w",
         "path": "./noises_dataset",
         "checkpoint_name": "dataset_dict.json"
+    },
+    "vad_model": {
+        "link": "https://disk.yandex.ru/d/J3cnq54nlR2J4A",
+        "path": ".",
+        "checkpoint_name": "silero_vad.jit"
     },
 }
 
