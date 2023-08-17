@@ -10,8 +10,8 @@ git clone https://github.com/dangrebenkin/audio_augmentator
 cd audio_augmentator
 python setup.py install
 ```
-**The noises dataset will be downloaded automatically during installation. Use absolute path of downloaded dataset as 
-noises_dataset='absolute path of downloaded dataset'.**
+**The noises dataset and silero-vad model will be downloaded automatically during installation. 
+Use absolute paths of downloaded files as `noises_dataset=` and `silero_vad_model_path=` values.**
 
 ### Usage steps
 
@@ -45,6 +45,7 @@ to get augmentated data.**
 Example of `augmentator_object` specified for augmentation:
 ```
 augmentator_object_1 = Augmentator(noises_dataset=<path to dataset>,
+                                   silero_vad_model_path=<path to silero_vad.jit>
                                    decibels=5.0,
                                    household_noises=True,
                                    background_music_noise=True) 

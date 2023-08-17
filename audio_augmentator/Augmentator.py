@@ -18,7 +18,7 @@ class Augmentator:
     def __init__(self,
 
                  noises_dataset: str,
-                 silero_vad_model_path: str,
+                 silero_vad_model_path: str = None,
                  decibels: float = 10.0,
                  household_noises: bool = False,
                  pets_noises: bool = False,
@@ -37,9 +37,11 @@ class Augmentator:
                  ):
 
         self.device = torch.device("cpu")
-        model = torch.jit.load(silero_vad_model_path,
-                               map_location=self.device)
-        self.model = model.to(self.device)
+        self.model = None
+        if silero_vad_model_path is not None:
+            model = torch.jit.load(silero_vad_model_path,
+                                   map_location=self.device)
+            self.model = model.to(self.device)
         self.noises_dataset = DatasetDict.load_from_disk(noises_dataset)
         self.resampler = torchaudio.transforms.Resample(new_freq=16000).to(self.device)
         self.overlayer = torchaudio.transforms.AddNoise().to(self.device)
@@ -171,7 +173,8 @@ class Augmentator:
                     current_speech['end'] = prev_end
                     speeches.append(current_speech)
                     current_speech = {}
-                    if next_start < prev_end:  # previously reached silence (< neg_thres) and is still not speech (< thres)
+                    if next_start < prev_end:  # previously reached silence (< neg_thres)
+                        # and is still not speech (< thres)
                         triggered = False
                     else:
                         current_speech['start'] = next_start
@@ -450,11 +453,13 @@ class Augmentator:
                                 noise_to_mix_tensor = torch.from_numpy(np.float32(noise_to_mix_array))
                                 noise_to_mix_tensor = self.tensor_normalization(noise_to_mix_tensor)
                                 noise_to_mix_tensor.to(self.device)
-                                speech_timestamps = self.get_speech_timestamps(input_audio=noise_to_mix_tensor,
-                                                                               silero_vad_model=self.model,
-                                                                               sampling_rate_value=self.sample_rate)
-                                if len(speech_timestamps) >= 1:
-                                    noise_to_mix_tensor = self.collect_chunks(speech_timestamps, noise_to_mix_tensor)
+                                if self.model is not None:
+                                    speech_timestamps = self.get_speech_timestamps(input_audio=noise_to_mix_tensor,
+                                                                                   silero_vad_model=self.model,
+                                                                                   sampling_rate_value=self.sample_rate)
+                                    if len(speech_timestamps) >= 1:
+                                        noise_to_mix_tensor = self.collect_chunks(speech_timestamps,
+                                                                                  noise_to_mix_tensor)
                                 noise_to_mix_tensor = torch.unsqueeze(noise_to_mix_tensor, 0)
                             elif noise_type != "speech_noises":
                                 noise_to_mix_array = self.signal_energy_noise_search(noise_to_mix_array)
