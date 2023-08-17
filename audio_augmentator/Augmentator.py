@@ -36,9 +36,10 @@ class Augmentator:
                  wet_only: bool = False
                  ):
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = torch.jit.load(silero_vad_model_path,
-                                    map_location=self.device)
+        self.device = torch.device("cpu")
+        model = torch.jit.load(silero_vad_model_path,
+                               map_location=self.device)
+        self.model = model.to(self.device)
         self.noises_dataset = DatasetDict.load_from_disk(noises_dataset)
         self.resampler = torchaudio.transforms.Resample(new_freq=16000).to(self.device)
         self.overlayer = torchaudio.transforms.AddNoise().to(self.device)
@@ -448,6 +449,7 @@ class Augmentator:
                             if noise_type == "speech_noises":
                                 noise_to_mix_tensor = torch.from_numpy(np.float32(noise_to_mix_array))
                                 noise_to_mix_tensor = self.tensor_normalization(noise_to_mix_tensor)
+                                noise_to_mix_tensor.to(self.device)
                                 speech_timestamps = self.get_speech_timestamps(input_audio=noise_to_mix_tensor,
                                                                                silero_vad_model=self.model,
                                                                                sampling_rate_value=self.sample_rate)
