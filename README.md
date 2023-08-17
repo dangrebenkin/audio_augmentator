@@ -2,7 +2,7 @@
 
 Audio augmentation and reverberation tool.
 
-### Instalation
+### Installation
 
 ```
 sudo apt-get install sox
