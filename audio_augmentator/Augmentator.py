@@ -13,6 +13,11 @@ from pysndfx import AudioEffectsChain
 
 class Augmentator:
 
+    model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad',
+                                  model='silero_vad',
+                                  force_reload=False,
+                                  onnx=False)
+
     def __init__(self,
 
                  noises_dataset: str,
@@ -67,10 +72,6 @@ class Augmentator:
                                      wet_gain=self.wet_gain,
                                      wet_only=self.wet_only)
                              )
-        self.model, self.utils = torch.hub.load(repo_or_dir='snakers4/silero-vad',
-                                                model='silero_vad',
-                                                force_reload=False,
-                                                onnx=False)
 
     def tensor_normalization(self,
                              input_tensor: torch.tensor) -> torch.tensor:
