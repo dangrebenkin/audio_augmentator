@@ -48,7 +48,7 @@ augmentator_object_1 = Augmentator(noises_dataset=<path to dataset>,
                                    silero_vad_model_path=<path to silero_vad.jit>
                                    decibels=5.0,
                                    household_noises=True,
-                                   background_music_noise=True) 
+                                   background_music_noises=True) 
 ```
 The parameters set of this example will let you get two files as output: original file augmented with household noises 
 and music noises. The noise from corpora and augmentation way ('loop', 'random_position') is chosen randomly.
