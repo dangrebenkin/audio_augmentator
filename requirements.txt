@@ -2,7 +2,7 @@ torch~=2.0.1
 torchaudio~=2.0.2
 numpy==1.23.5
 scipy~=1.10.1
-datasets==2.14.2
+datasets
 pysndfx~=0.3.6
 requests~=2.31.0
 tqdm~=4.65.0
