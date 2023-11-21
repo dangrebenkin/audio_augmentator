@@ -24,4 +24,4 @@ audio_to_augment, org_sr = torchaudio.load(audio_to_augment, normalize=True)  # 
 
 augmentation_results_dict = augmentator_object.augmentate(audio_to_augment, org_sr)
 for i in augmentation_results_dict.keys():
-    torchaudio.save(f'{i}', augmentation_results_dict[i], 16000)
+    torchaudio.save(f'{i}', augmentation_results_dict[i], sample_rate=16000, bits_per_sample=16)
