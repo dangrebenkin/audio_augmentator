@@ -1,4 +1,6 @@
 import math
+import os
+
 import torch
 import random
 import struct
@@ -42,6 +44,7 @@ class Augmentator:
             model = torch.jit.load(silero_vad_model_path,
                                    map_location=self.device)
             self.model = model.to(self.device)
+        assert os.path.isdir(noises_dataset), f'"{noises_dataset}" does not exist!'
         self.noises_dataset = DatasetDict.load_from_disk(noises_dataset)
         self.resampler = torchaudio.transforms.Resample(new_freq=16000).to(self.device)
         self.overlayer = torchaudio.transforms.AddNoise().to(self.device)
