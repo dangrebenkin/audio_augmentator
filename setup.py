@@ -8,7 +8,7 @@ class PostInstallCommand(install):
         subprocess.call(['pip', 'install', 'torch==2.0.1', 'torchaudio==2.0.2',
                          '--index-url', 'https://download.pytorch.org/whl/cpu'])
         subprocess.call(['pip', 'install', '-r', 'requirements.txt'])
-        subprocess.call(['python', './audio_augmentator/load_files.py'])
+        # subprocess.call(['python', './audio_augmentator/load_files.py'])
         install.run(self)
 
 
