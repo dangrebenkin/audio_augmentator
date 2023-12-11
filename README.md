@@ -1,8 +1,42 @@
-# Audio Augmentator
+## Аугментатор аудиофайлов
 
-Audio augmentation and reverberation tool.
+Библиотека для аугментации аудиозаписей в формате моно WAV PCM, частота дискретизации 8 или 16 кГц.
 
-### Installation
+### Описание
+
+Аугментатор способен создавать зашумленные аудиозаписи с эффектом реверберации или с фоновым шумом:
+1. Для получения эффекта реверберации используется библиотека [pysndfx](https://github.com/carlthome/python-audio-effects)
+c настраиваемыми параметрами глубины, уменьшения высоких частот и т.п.
+2. Корпус доступных фоновых шумов содержит 4 типа аудиозаписей:
+   - Бытовые (стук столовых приборов, шум работающей стиральной машинки хлопок межкомнатной двери и др.);
+   - Шумы домашних животных (мяуканье кошек, лай собак и др.);
+   - Речеподобные шумы (фоновая речь других людей, шум телевизора или радио и др.);
+   - Музыкальные шумы (фоновая музыка и др.).
+
+Корпус шумов был сформирован из нескольких источников:
+  - [Animal-Sound-Dataset](https://github.com/YashNita/Animal-Sound-Dataset);
+  - [Freesound Audio Tagging 2019](https://www.kaggle.com/competitions/freesound-audio-tagging-2019/data).
+
+Шумовые аудиозаписи могут быть «подмешаны» в различных сочетаниях с настраиваемым значением соотношения сигнал-шум 
+(в децибелах). При использовании шумовой аудиозаписи длительностью менее 3 секунд такой аудиофайл с шумом участвует 
+в аугментации целиком; если шумовая аудиозапись имеет длительность более 3 секунд, то из такого сигнала несколькими методами 
+в зависимости от типа шума выделяется наиболее подходящий для аугментации фрагмент:
+- Для речеподобных шумов используется модель [Silero Voice Active Detection](https://github.com/snakers4/silero-vad);
+- Для остальных типов шумов был разработан и реализован следующий алгоритм:
+   1. Выполняется поиск самого большого по значению локального максимума функции энергии аудиосигнала;
+   2. В окрестностях найденного локального максимума выполняется поиск локальных минимумов значений функции энергии, 
+   которые и определяют границы конечного аудиофрагмента.
+   После окончания подготовки шумового аудиофрагмента или аудиофайла целиком шумовая аудиозапись может быть «подмешана» 
+   во входную аудиозапись одним из двух способов, который выбирается случайно (с помощью инструментов библиотеки random):
+       1. Если в результате случайного выбора избирается способ «цикла» («loop»), то вычисляется число необходимых 
+      повторений шумового аудиосигнала/аудиофрагмента, которое должно быть не меньше чем входной аудиосигнал по длительности. 
+      После этого создается новый шумовой аудиосигнал путем конкатенации вычисленного числа шумовых аудиосигналов/аудиофрагментов;
+       2. Если в результате случайного выбора избирается способ «случайной позиции» («random position»), то случайным 
+      образом вычисляется временной момент начала и конца «наложения» шума с учетом длительности входного аудиосигнала;
+       3. Далее в каждом из способов шумовой аудиосигнал «накладывается» на входной аудиосигнал с учетом его длительности 
+      (новый шумовой аудиосигнал обрезается по моменту окончания входного аудиосигнала) и выбранного пользователем соотношения сигнал-шум.
+
+### Установка
 
 ```
 sudo apt-get install sox
@@ -10,86 +44,109 @@ git clone https://github.com/dangrebenkin/audio_augmentator
 cd audio_augmentator
 python setup.py install
 ```
-**The noises dataset and silero-vad model will be downloaded automatically during installation. 
-Use absolute paths of downloaded files as `noises_dataset=` and `silero_vad_model_path=` values.**
+**При установке автоматически скачивается корпус шумов и модель Voice Activity Detection от Silero.**
 
-### Usage steps
+### Алгоритм использования
 
-##### **1. Create _Augmentator_ object:**
+##### **1. Создать экземпляр класса _Augmentator_ с необходимыми параметрами:**
 
 ```
 from audio_augmentator import Augmentator
 
-augmentator_object = Augmentator(noises_dataset=<path to dataset>)
+augmentator_object = Augmentator(noises_dataset=<path to dataset>,
+                                 silero_vad_model_path=<path to silero_vad.jit>
+                                 ...)
+```
+**Обязательный параметр:**
+* `noises_dataset` : полный путь к датасету шумов _noises_dataset_, который скачивается автоматически при установке библиотеки;
+
+**Обязательный параметр для аугментации речевыми шумами:**
+* `silero_vad_model_path` : полный путь к файлу модели VAD _silero_vad.jit_, который скачивается автоматически 
+при установке библиотеки (**опционально**) по умолчанию = `None`;
+
+**Список дополнительных параметров:**
+
+* `decibels`: соотношение сигнал-шум (в дБ), (**опционально**) по умолчанию = 10.0;
+* `household_noises`: установить True для получения аудио, аугментированных бытовыми шумами (**опционально**), по умолчанию = False;
+* `pets_noises`: установить True для получения аудио, аугментированных шумами животных (**опционально**), по умолчанию = False;
+* `speech_noises`: установить True для получения аудио, аугментированных речеподобными шумами (**опционально**), по умолчанию = False;
+* `background_music_noises`: установить True для получения аудио, аугментированных музыкальными шумами (**опционально**), по умолчанию = False;
+* `to_mix`: установить True для получения аудио, аугментированных несколькими типами шумамов (для срабатывания необходимо, чтобы >= 2
+типов шумов (`household_noises`, `pets_noises`, `speech_noises`, `background_music_noises`) были установлены в True) (**опционально**), по умолчанию = False.
+* `to_reverb`: установить True для получения аудио, аугментированных ревербационными шумами (**always required for reverberation**), по умолчанию = False.
+
+**Также доступно изменения параметров из библиотеки pysndfx для настройки реверберации:**
+* `reverberance`: (**опционально**) по умолчанию = 50;
+* `hf_damping`: (**опционально**) по умолчанию = 50;
+* `room_scale`: (**опционально**) по умолчанию = 100;
+* `stereo_depth`: (**опционально**) по умолчанию = 100;
+* `pre_delay`: (**опционально**) по умолчанию = 20;
+* `wet_gain`: (**опционально**) по умолчанию = 0;
+* `wet_only`: (**опционально**) по умолчанию = False).
+
+Примеры:
+1. Инициализация объекта класса _Augmentator_ для аугментации:
+```
+from audio_augmentator import Augmentator
+
+augmentator_object_1 = Augmentator(noises_dataset=noises_dataset,
+                                 silero_vad_model_path=silero_vad.jit,
+                                 decibels=5.0,
+                                 speech_noises=True,
+                                 background_music_noises=True)
+```
+2. Инициализация объекта класса _Augmentator_ для реверберации:
+```
+from audio_augmentator import Augmentator
+
+augmentator_object_2 = Augmentator(noises_dataset=noises_dataset,
+                                 to_reverb=True,
+                                 room_scale=80)
+```
+3. Инициализация объекта класса _Augmentator_ для реверберации и аугментации:
+```
+from audio_augmentator import Augmentator
+
+augmentator_object_3 = Augmentator(noises_dataset=noises_dataset,
+                                 to_reverb=True,
+                                 room_scale=80,
+                                 decibels=15.0,
+                                 background_music_noises=True)
 ```
 
-Set `augmentator_object` parameters depending on audio augmentation type: augmentation with different types of 
-background noises (step 1.1) or reverberation effect (step 1.2).
-
-##### **1.1 Augmentation (`Augmentator(to_augment=True)`)**
-
-Augmentation parameters set:
-
-* `decibels`: a difference (dBS) of between input audio signal volume and noise volume (e.g. if `decibels=5.0` it means
-  that noise level will be 10 dBS lower than original audio volume in augmented audio), (**optional**) default = 10.0;
-* `household_noises`: set True to get audio augmented with household noises (**optional**), default = False;
-* `pets_noises`: set True to get audio augmented with pets noises (**optional**), default = False;
-* `speech_noises`: set True to get audio augmented with speech (**optional**), default = False;
-* `background_music_noises`: set True to get audio augmented with music noises (**optional**), default = False.
-* `to_mix`: set True to get audio mixed with several types of noises (you should set True to at least two types 
-of noises to get the result)(**optional**), default = False.
-
-**(!) You have to set True to one of the noises types (`household_noises`, `pets_noises`, `speech_noises`, `background_music_noises`) parameters
-to get augmentated data.**
-
-Example of `augmentator_object` specified for augmentation:
-```
-augmentator_object_1 = Augmentator(noises_dataset=<path to dataset>,
-                                   silero_vad_model_path=<path to silero_vad.jit>
-                                   decibels=5.0,
-                                   household_noises=True,
-                                   background_music_noises=True) 
-```
-The parameters set of this example will let you get two files as output: original file augmented with household noises 
-and music noises. The noise from corpora and augmentation way ('loop', 'random_position') is chosen randomly.
-
-##### **1.2 Reverberation (`Augmentator(to_reverb=True)`)**
-
-Reverberation parameters set:
-
-* `to_reverb`: enable getting reverberation results (**always required for reverberation**), default = False;
-* `reverberance`: (**optional**) default = 50;
-* `hf_damping`: (**optional**) default = 50;
-* `room_scale`: (**optional**) default = 100;
-* `stereo_depth`: (**optional**) default = 100;
-* `pre_delay`: (**optional**) default = 20;
-* `wet_gain`: (**optional**) default = 0;
-* `wet_only`: (**optional**) default = False).
-
-Reverberation was implemented with using pysndfx library (https://github.com/carlthome/python-audio-effects).
-
-Example (using default reverb values):
+##### **2. Применить функцию reverberate() и/или augmentate() к аудио**
 
 ```
-augmentator_object_2 = Augmentator(to_reverb=True,
-                                   wet_only=True) 
-```
-
-##### **2. Augmentation | reverberation outputs**
-
-Use reverberate() or augmentate() to get outputs (see _simple_example.py_ and _mulitask_example.py_):
-
-```
-augmented_sound = augmentator_object_1.augmentate(audio_to_augment_input='wav_to_augment.wav', file_original_sample_rate=16000)
-reverbed_sound = augmentator_object_2.reverberate(audio_to_reverb_input='wav_to_reverb.wav', file_original_sample_rate=16000)
+augmented_sound = augmentator_object_1.augmentate(audio_to_augment_input='wav_to_augment.wav', 
+                                                  file_original_sample_rate=16000)
+reverbed_sound = augmentator_object_2.reverberate(audio_to_reverb_input='wav_to_reverb.wav', 
+                                                  file_original_sample_rate=16000)
 augmented_sound  # {'<wav_to_augment>_household_noises_5.wav': <torch.tensor>, 
                     '<wav_to_augment>_background_music_noise_5.wav': <torch.tensor>}
 reverbed_sound  # {'<wav_to_reverb>_reverbed.wav': <torch.tensor>}
 ```
-**(!)** `audio_to_augment_input=` and `audio_to_reverb_input=` values can be got in the following format:
+**(!)** В качестве входного аудио (параметры `audio_to_augment_input=` and `audio_to_reverb_input=`) можно подать данные следующих типов:
 1) string path to audiofile;
 2) torch.tensor;
 3) numpy.ndarray.
 
-**(!)** `file_original_sample_rate=` is 16000 by default, but it should be changes if it differs.
+**(!)** Параметр `file_original_sample_rate=` (**опционально**) is 16000 by по умолчанию, но он может быть изменен в соответствии с 
+оригинальной частотой дискретизации входного аудио файла.
+
+**(!)** Больше примеров использования аугментатора можно найти в папке `examples`.
+
+### Ссылки
+
+1. Eduardo Fonseca, Manoj Plakal, Frederic Font, Daniel P. W. Ellis, Xavier Serra. Audio tagging with noisy labels and 
+  minimal supervision. In Proceedings of DCASE2019 Workshop, NYC, US (2019). URL: https://arxiv.org/abs/1906.02975
+2. @misc{Silero VAD,
+  author = {Silero Team},
+  title = {Silero VAD: pre-trained enterprise-grade Voice Activity Detector (VAD), Number Detector and Language Classifier},
+  year = {2021},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/snakers4/silero-vad}},
+  commit = {insert_some_commit_here},
+  email = {hello@silero.ai}
+}
 

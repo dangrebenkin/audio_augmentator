@@ -4,6 +4,7 @@ from audio_augmentator import Augmentator
 
 cores_number = cpu_count()
 augmentation_tool = Augmentator(noises_dataset='/home/user/documents/projects/audio_augmentator/noises_dataset',
+                                silero_vad_model_path='/home/user/documents/projects/audio_augmentator/silero_vad.jit',
                                 decibels=5.0,
                                 speech_noises=True
                                 )
@@ -16,4 +17,4 @@ pool.close()
 pool.join()
 
 for i in all_results.keys():
-    torchaudio.save(f'{i}', all_results[i], 16000)
+    torchaudio.save(f'{i}', all_results[i], sample_rate=16000, bits_per_sample=16)
