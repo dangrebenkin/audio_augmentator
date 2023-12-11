@@ -57,7 +57,7 @@ augmentator_object = Augmentator(noises_dataset=<path to dataset>,
                                  silero_vad_model_path=<path to silero_vad.jit>
                                  ...)
 ```
-**Обязательный параметр:**
+**Обязательный параметр (всегда):**
 * `noises_dataset` : полный путь к датасету шумов _noises_dataset_, который скачивается автоматически при установке библиотеки;
 
 **Обязательный параметр для аугментации речевыми шумами:**
@@ -72,7 +72,7 @@ augmentator_object = Augmentator(noises_dataset=<path to dataset>,
 * `speech_noises`: установить True для получения аудио, аугментированных речеподобными шумами (**опционально**), по умолчанию = False;
 * `background_music_noises`: установить True для получения аудио, аугментированных музыкальными шумами (**опционально**), по умолчанию = False;
 * `to_mix`: установить True для получения аудио, аугментированных несколькими типами шумамов (для срабатывания необходимо, чтобы >= 2
-типов шумов (`household_noises`, `pets_noises`, `speech_noises`, `background_music_noises`) были установлены в True) (**опционально**), по умолчанию = False.
+типов шумов (`household_noises`, `pets_noises`, `speech_noises`, `background_music_noises`) были установлены в True) (**опционально**), по умолчанию = False;
 * `to_reverb`: установить True для получения аудио, аугментированных ревербационными шумами (**always required for reverberation**), по умолчанию = False.
 
 **Также доступно изменения параметров из библиотеки pysndfx для настройки реверберации:**
