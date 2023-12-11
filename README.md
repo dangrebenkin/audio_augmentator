@@ -48,7 +48,7 @@ python setup.py install
 
 ### Алгоритм использования
 
-##### **1. Создать экземпляр класса _Augmentator_ с необходимыми параметрами:**
+#### **1. Создать экземпляр класса _Augmentator_ с необходимыми параметрами:**
 
 ```
 from audio_augmentator import Augmentator
@@ -114,7 +114,7 @@ augmentator_object_3 = Augmentator(noises_dataset=noises_dataset,
                                  background_music_noises=True)
 ```
 
-##### **2. Применить функцию reverberate() и/или augmentate() к аудио**
+#### **2. Применить функцию reverberate() и/или augmentate() к аудио**
 
 ```
 augmented_sound = augmentator_object_1.augmentate(audio_to_augment_input='wav_to_augment.wav', 
