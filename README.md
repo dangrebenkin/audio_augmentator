@@ -18,7 +18,7 @@ Use absolute paths of downloaded files as `noises_dataset=` and `silero_vad_mode
 ##### **1. Create _Augmentator_ object:**
 
 ```
-from audio_augmentator.Augmentator import Augmentator
+from audio_augmentator import Augmentator
 
 augmentator_object = Augmentator(noises_dataset=<path to dataset>)
 ```

@@ -1,6 +1,6 @@
 import torchaudio
 from multiprocessing import Pool, cpu_count
-from audio_augmentator.Augmentator import Augmentator
+from audio_augmentator import Augmentator
 
 cores_number = cpu_count()
 augmentation_tool = Augmentator(noises_dataset='/home/user/documents/projects/audio_augmentator/noises_dataset',

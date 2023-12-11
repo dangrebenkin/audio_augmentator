@@ -1,6 +1,6 @@
 import torchaudio
 
-from audio_augmentator.Augmentator import Augmentator
+from audio_augmentator import Augmentator
 
 augmentator_object = Augmentator(noises_dataset='noises_corpora',
                                  silero_vad_model_path='silero_vad.jit',
