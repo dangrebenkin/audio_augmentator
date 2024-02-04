@@ -3,25 +3,17 @@ import os
 
 import torch
 import random
-import struct
 import string
-import warnings
 import torchaudio
 import numpy as np
 from pathlib import Path
-from scipy import signal
 from datasets import DatasetDict
-from typing import Callable, List
 from pysndfx import AudioEffectsChain
 from .utils import (
-    signal_energy_noise_search,
-    get_speech_timestamps,
-    preprocess_other,
-    preprocess_speech
+    tensor_normalization,
+    CustomDataset
 )
 
-
-# from line_profiler_pycharm import profile
 
 class Augmentator:
 
@@ -35,7 +27,6 @@ class Augmentator:
             speech_noises: bool = False,
             background_music_noises: bool = False,
             to_mix: bool = False,
-
             to_reverb: bool = False,
             reverberance: int = 50,
             hf_damping: int = 50,
@@ -77,35 +68,24 @@ class Augmentator:
         self.pre_delay = pre_delay
         self.wet_gain = wet_gain
         self.wet_only = wet_only
-        self.reverberator = (AudioEffectsChain()
-                             .reverb(reverberance=self.reverberance,
-                                     hf_damping=self.hf_damping,
-                                     room_scale=self.room_scale,
-                                     stereo_depth=self.stereo_depth,
-                                     pre_delay=self.pre_delay,
-                                     wet_gain=self.wet_gain,
-                                     wet_only=self.wet_only)
-                             )
+        self.reverberator = (
+            AudioEffectsChain().reverb(
+                reverberance=self.reverberance,
+                hf_damping=self.hf_damping,
+                room_scale=self.room_scale,
+                stereo_depth=self.stereo_depth,
+                pre_delay=self.pre_delay,
+                wet_gain=self.wet_gain,
+                wet_only=self.wet_only
+            )
+        )
 
-    # collect_chunks and get_speech_timestamps from https://github.com/snakers4/silero-vad/blob/master/utils_vad.py
-    def collect_chunks(self,
-                       tss: List[dict],
-                       wav: torch.Tensor):
-        chunks = []
-        for i in tss:
-            chunks.append(wav[i['start']: i['end']])
-        return torch.cat(chunks)
-
-    def tensor_normalization(self,
-                             input_tensor: torch.tensor) -> torch.tensor:
-        if torch.max(torch.abs(input_tensor)).item() > 1.0:
-            input_tensor /= torch.max(torch.abs(input_tensor))
-        return input_tensor
-
-    def input_data_preprocessing(self,
-                                 input_data,
-                                 temp_filename: str,
-                                 temp_sample_rate) -> torch.tensor:
+    def input_data_preprocessing(
+            self,
+            input_data,
+            temp_filename: str,
+            temp_sample_rate: int
+    ) -> torch.tensor:
 
         input_format = type(input_data).__name__
         final_filename = temp_filename
@@ -132,36 +112,42 @@ class Augmentator:
             preprocessed_data = str(err)
             return preprocessed_data, final_filename
 
-        preprocessed_data = self.tensor_normalization(preprocessed_data)
+        preprocessed_data = tensor_normalization(preprocessed_data)
         preprocessed_data.to(self.device)
         self.resampler.orig_freq = defined_sample_rate
         preprocessed_data = self.resampler(preprocessed_data)
 
         return preprocessed_data, final_filename
 
-    def reverberate(self,
-                    audio_to_reverb_input,
-                    file_original_sample_rate: int = 16000) -> dict:
+    def reverberate(
+            self,
+            audio_to_reverb_input,
+            file_original_sample_rate: int = 16000
+    ) -> dict:
 
         reverbed_result = {}
         generated_filename = ''.join(random.choices(string.ascii_lowercase, k=5))
 
         if self.to_reverb:
 
-            audio_to_reverb, filename = self.input_data_preprocessing(input_data=audio_to_reverb_input,
-                                                                      temp_filename=generated_filename,
-                                                                      temp_sample_rate=file_original_sample_rate)
+            audio_to_reverb, filename = self.input_data_preprocessing(
+                input_data=audio_to_reverb_input,
+                temp_filename=generated_filename,
+                temp_sample_rate=file_original_sample_rate
+            )
             if type(audio_to_reverb).__name__ == 'str':
                 reverbed_result[filename] = audio_to_reverb
                 return reverbed_result
             reverbed_audio_name = f'{filename}_reverbed.wav'
             try:
-                reverbed_audio_array = self.reverberator(audio_to_reverb[0].numpy(),
-                                                         sample_in=self.sample_rate,
-                                                         sample_out=self.sample_rate)
+                reverbed_audio_array = self.reverberator(
+                    audio_to_reverb[0].numpy(),
+                    sample_in=self.sample_rate,
+                    sample_out=self.sample_rate
+                )
                 reverbed_audio_array = np.float32(reverbed_audio_array)
                 reverbed_audio_tensor = torch.unsqueeze(torch.from_numpy(reverbed_audio_array), 0)
-                reverbed_audio_tensor = self.tensor_normalization(reverbed_audio_tensor)
+                reverbed_audio_tensor = tensor_normalization(reverbed_audio_tensor)
                 reverbed_result[reverbed_audio_name] = reverbed_audio_tensor
             except BaseException as err:
                 reverbed_result[reverbed_audio_name] = str(err)
@@ -203,9 +189,10 @@ class Augmentator:
             padded_noise_tensor = torch.zeros(1, audio_to_augment_tensor_length)
             padded_noise_tensor[0][start_position:end_position] = prepared_noise_audio_tensor
             padded_noise_tensor.to(self.device)
-            overlay_result = self.overlayer(original_audio_tensor,
-                                            noise=padded_noise_tensor,
-                                            snr=torch.tensor([self.decibels]))
+            overlay_result = self.overlayer(
+                original_audio_tensor,
+                noise=padded_noise_tensor,
+                snr=torch.tensor([self.decibels]))
 
         return overlay_result
 
@@ -214,11 +201,12 @@ class Augmentator:
             audio_to_augment_input,
             file_original_sample_rate: int = 16000
     ) -> dict:
-
-        noises_types_dict = {"household": self.household_noises,
-                             "pets": self.pets_noises,
-                             "speech": self.speech_noises,
-                             "background": self.background_music_noises}
+        noises_types_dict = {
+            "household": self.household_noises,
+            "pets": self.pets_noises,
+            "speech": self.speech_noises,
+            "background_music": self.background_music_noises
+        }
 
         augmented_audiofiles = {}
         generated_filename = ''.join(random.choices(string.ascii_lowercase, k=5))
@@ -229,9 +217,11 @@ class Augmentator:
 
             # audio
             (audio_to_augment_tensor,
-             filename) = self.input_data_preprocessing(input_data=audio_to_augment_input,
-                                                       temp_filename=generated_filename,
-                                                       temp_sample_rate=file_original_sample_rate)
+             filename) = self.input_data_preprocessing(
+                input_data=audio_to_augment_input,
+                temp_filename=generated_filename,
+                temp_sample_rate=file_original_sample_rate
+            )
             if type(audio_to_augment_tensor).__name__ == 'str':
                 augmented_audiofiles[filename] = audio_to_augment_tensor
                 return augmented_audiofiles
@@ -247,39 +237,13 @@ class Augmentator:
                         # noise processing
                         noises_source = self.noises_dataset[noise_type]
                         dataset_last_row_index = noises_source.num_rows - 1
-                        noise_to_mix_id = random.choice(range(0, dataset_last_row_index))
+                        noise_to_mix_id = random.randint(0, dataset_last_row_index)
                         noise_to_mix_array = noises_source[noise_to_mix_id]['audio']['array']
-                        # noise_file_duration = len(noise_to_mix_array) / float(self.sample_rate)
-                        # noise_to_mix_tensor = torch.from_numpy(np.float32(noise_to_mix_array))
+                        noise_to_mix_tensor = torch.from_numpy(noise_to_mix_array)
 
+                        # noise_to_mix_tensor = torch.unsqueeze(noise_to_mix_tensor, 0) # TODO check if its ok to remove
 
-                        # noise_to_mix_tensor = None
-
-                        # if noise_file_duration > 3.0:
-                        #     if noise_type == "speech_noises":
-                        #         noise_to_mix_tensor = torch.from_numpy(np.float32(noise_to_mix_array))
-                        #         noise_to_mix_tensor = self.tensor_normalization(noise_to_mix_tensor)
-                        #         noise_to_mix_tensor.to(self.device)
-                        #         if self.model is not None:
-                        #             speech_timestamps = get_speech_timestamps(
-                        #                 input_audio=noise_to_mix_tensor,
-                        #                 silero_vad_model=self.model,
-                        #                 sampling_rate_value=self.sample_rate
-                        #             )
-                        #             if len(speech_timestamps) >= 1:
-                        #                 noise_to_mix_tensor = self.collect_chunks(speech_timestamps,
-                        #                                                           noise_to_mix_tensor)
-                        #         noise_to_mix_tensor = torch.unsqueeze(noise_to_mix_tensor, 0)
-                        #         noise_to_mix_tensor = preprocess_speech(noise_to_mix_array, self.model)
-                        #     elif noise_type != "speech_noises":
-                        #         noise_to_mix_array = signal_energy_noise_search(noise_to_mix_array)
-                        #         noise_to_mix_array = np.float32(noise_to_mix_array)
-                        #         noise_to_mix_tensor = torch.unsqueeze(torch.from_numpy(noise_to_mix_array), 0)
-                        # elif noise_file_duration <= 3.0:
-                        noise_to_mix_array = np.float32(noise_to_mix_array)
-                        noise_to_mix_tensor = torch.unsqueeze(torch.from_numpy(noise_to_mix_array), 0)
-
-                        noise_to_mix_tensor = self.tensor_normalization(noise_to_mix_tensor)
+                        noise_to_mix_tensor = tensor_normalization(noise_to_mix_tensor)
 
                         # augmentation
                         if self.to_mix:
@@ -287,8 +251,9 @@ class Augmentator:
 
                         augmented_audio_tensor = self.augmentation_overlay(
                             original_audio_tensor=audio_to_augment_tensor,
-                            prepared_noise_audio_tensor=noise_to_mix_tensor)
-                        augmented_audio_tensor = self.tensor_normalization(augmented_audio_tensor)
+                            prepared_noise_audio_tensor=noise_to_mix_tensor
+                        )
+                        augmented_audio_tensor = tensor_normalization(augmented_audio_tensor)
                         augmented_audiofiles[augmented_audio_filename] = augmented_audio_tensor
 
                 except BaseException as err:
@@ -314,13 +279,17 @@ class Augmentator:
                             template_zero_tensor = torch.zeros(1, noises_mix_length)
                             template_zero_tensor[0][0:end_position] = n
                             template_zero_tensor.to(self.device)
-                            noises_mix = self.overlayer(noises_mix,
-                                                        noise=template_zero_tensor,
-                                                        snr=torch.tensor([0]))
+                            noises_mix = self.overlayer(
+                                noises_mix,
+                                noise=template_zero_tensor,
+                                snr=torch.tensor([0])
+                            )
 
-                        mixed_audio_tensor = self.augmentation_overlay(original_audio_tensor=noise_to_mix_tensors[0],
-                                                                       prepared_noise_audio_tensor=noises_mix)
-                        mixed_audio_tensor = self.tensor_normalization(mixed_audio_tensor)
+                        mixed_audio_tensor = self.augmentation_overlay(
+                            original_audio_tensor=noise_to_mix_tensors[0],
+                            prepared_noise_audio_tensor=noises_mix
+                        )
+                        mixed_audio_tensor = tensor_normalization(mixed_audio_tensor)
                         augmented_audiofiles[filename_mixed] = mixed_audio_tensor
                 except BaseException as err:
                     augmented_audiofiles[filename_mixed] = str(err)

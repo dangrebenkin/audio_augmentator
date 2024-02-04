@@ -4,6 +4,9 @@ from scipy import signal
 import torch
 from typing import Callable, List
 import warnings
+import os
+import torchaudio
+from torch.utils.data import Dataset
 
 
 def signal_energy_noise_search(
@@ -228,6 +231,7 @@ def get_speech_timestamps(
     return speeches
 
 
+# collect_chunks and get_speech_timestamps from https://github.com/snakers4/silero-vad/blob/master/utils_vad.p
 def collect_chunks(
         tss: List[dict],
         wav: torch.Tensor
@@ -263,6 +267,7 @@ def preprocess_speech(
     noise_to_mix_tensor = torch.unsqueeze(noise_to_mix_tensor, 0)
     return noise_to_mix_tensor
 
+
 def preprocess_other(
         audio_array: np.ndarray
 ):
@@ -270,3 +275,22 @@ def preprocess_other(
     noise_to_mix_array = np.float32(noise_to_mix_array)
     noise_to_mix_tensor = torch.unsqueeze(torch.from_numpy(noise_to_mix_array), 0)
     return noise_to_mix_tensor
+
+
+class CustomDataset(Dataset):
+    def __init__(self, root_dir: str):
+        self.root_dir = root_dir
+        self.file_paths = []
+        for dirpath, _, filenames in os.walk(root_dir):
+            for filename in filenames:
+                if filename.endswith('.wav'):
+                    self.file_paths.append(os.path.join(dirpath, filename))
+        self.num_files = len(self.file_paths)
+
+    def __getitem__(self, item):
+        file_path = self.file_paths[item]
+        waveform, _ = torchaudio.load(file_path)
+        return waveform
+
+    def __len__(self):
+        return self.num_files
