@@ -215,10 +215,10 @@ class Augmentator:
             file_original_sample_rate: int = 16000
     ) -> dict:
 
-        noises_types_dict = {"household_noises": self.household_noises,
-                             "pets_noises": self.pets_noises,
-                             "speech_noises": self.speech_noises,
-                             "background_music_noises": self.background_music_noises}
+        noises_types_dict = {"household": self.household_noises,
+                             "pets": self.pets_noises,
+                             "speech": self.speech_noises,
+                             "background": self.background_music_noises}
 
         augmented_audiofiles = {}
         generated_filename = ''.join(random.choices(string.ascii_lowercase, k=5))
@@ -250,7 +250,7 @@ class Augmentator:
                         noise_to_mix_id = random.choice(range(0, dataset_last_row_index))
                         noise_to_mix_array = noises_source[noise_to_mix_id]['audio']['array']
                         # noise_file_duration = len(noise_to_mix_array) / float(self.sample_rate)
-                        noise_to_mix_tensor = torch.from_numpy(np.float32(noise_to_mix_array))
+                        # noise_to_mix_tensor = torch.from_numpy(np.float32(noise_to_mix_array))
 
 
                         # noise_to_mix_tensor = None
