@@ -11,7 +11,8 @@ from datasets import DatasetDict
 from pysndfx import AudioEffectsChain
 from .utils import (
     tensor_normalization,
-    CustomDataset
+    BaseNoiseDataset,
+    get_composed_dataset
 )
 
 
@@ -44,7 +45,8 @@ class Augmentator:
                                    map_location=self.device)
             self.model = model.to(self.device)
         assert os.path.isdir(noises_dataset), f'"{noises_dataset}" does not exist!'
-        self.noises_dataset = DatasetDict.load_from_disk(noises_dataset)
+        # self.noises_dataset = DatasetDict.load_from_disk(noises_dataset)
+        self.noises_dataset = get_composed_dataset(noises_dataset)
         self.resampler = torchaudio.transforms.Resample(new_freq=16000).to(self.device)
         self.overlayer = torchaudio.transforms.AddNoise().to(self.device)
         self.sample_rate = 16000
@@ -234,15 +236,10 @@ class Augmentator:
                 try:
                     if noises_types_dict[noise_type]:
 
-                        # noise processing
                         noises_source = self.noises_dataset[noise_type]
-                        dataset_last_row_index = noises_source.num_rows - 1
+                        dataset_last_row_index = len(noises_source) - 1
                         noise_to_mix_id = random.randint(0, dataset_last_row_index)
-                        noise_to_mix_array = noises_source[noise_to_mix_id]['audio']['array']
-                        noise_to_mix_tensor = torch.from_numpy(noise_to_mix_array)
-
-                        # noise_to_mix_tensor = torch.unsqueeze(noise_to_mix_tensor, 0) # TODO check if its ok to remove
-
+                        noise_to_mix_tensor = noises_source[noise_to_mix_id]
                         noise_to_mix_tensor = tensor_normalization(noise_to_mix_tensor)
 
                         # augmentation

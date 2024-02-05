@@ -7,6 +7,7 @@ import warnings
 import os
 import torchaudio
 from torch.utils.data import Dataset
+from datasets import DatasetDict
 
 
 def signal_energy_noise_search(
@@ -277,7 +278,15 @@ def preprocess_other(
     return noise_to_mix_tensor
 
 
-class CustomDataset(Dataset):
+def get_composed_dataset(root_dir: str):
+    datasets = {}
+    for label in os.listdir(root_dir):
+        if os.path.isdir(os.path.join(root_dir, label)):
+            datasets[label] = BaseNoiseDataset(os.path.join(root_dir, label))
+    return DatasetDict(datasets)
+
+
+class BaseNoiseDataset(Dataset):
     def __init__(self, root_dir: str):
         self.root_dir = root_dir
         self.file_paths = []
