@@ -278,7 +278,19 @@ def preprocess_other(
     return noise_to_mix_tensor
 
 
-def get_composed_dataset(root_dir: str):
+def get_composed_dataset(root_dir: str) -> DatasetDict:
+    """
+    :param root_dir: root directory where located all noises folders with
+    the following structure:
+        root_dir/
+            noise_type_1/
+                1.wav
+                2.wav
+            noise_type_2/
+                1.wav
+                2.wav
+    :return: DatasetDict which contains BaseNoiseDataset objects
+    """
     datasets = {}
     for label in os.listdir(root_dir):
         if os.path.isdir(os.path.join(root_dir, label)):
@@ -287,6 +299,15 @@ def get_composed_dataset(root_dir: str):
 
 
 class BaseNoiseDataset(Dataset):
+    """
+    Base dataset class for exact noise data which locates in folder
+    with the following structure:
+        noise_type/
+            1.wav
+            2.wav
+
+    """
+
     def __init__(self, root_dir: str):
         self.root_dir = root_dir
         self.file_paths = []

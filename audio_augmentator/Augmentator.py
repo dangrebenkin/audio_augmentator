@@ -44,8 +44,8 @@ class Augmentator:
             model = torch.jit.load(silero_vad_model_path,
                                    map_location=self.device)
             self.model = model.to(self.device)
+
         assert os.path.isdir(noises_dataset), f'"{noises_dataset}" does not exist!'
-        # self.noises_dataset = DatasetDict.load_from_disk(noises_dataset)
         self.noises_dataset = get_composed_dataset(noises_dataset)
         self.resampler = torchaudio.transforms.Resample(new_freq=16000).to(self.device)
         self.overlayer = torchaudio.transforms.AddNoise().to(self.device)
@@ -61,6 +61,10 @@ class Augmentator:
         self.speech_noises = speech_noises
         self.background_music_noises = background_music_noises
         self.to_mix = to_mix
+        if self.to_mix:
+            number_of_noises_to_mix = sum([background_music_noises, household_noises, pets_noises, speech_noises])
+            assert number_of_noises_to_mix >= 2, \
+                f"To mix noises you must choose at least 2 of them. Got {number_of_noises_to_mix}."
 
         self.to_reverb = to_reverb
         self.reverberance = reverberance
@@ -202,7 +206,12 @@ class Augmentator:
             self,
             audio_to_augment_input,
             file_original_sample_rate: int = 16000
-    ) -> dict:
+    ) -> dict[str, torch.tensor]:
+        """
+        :param audio_to_augment_input:
+        :param file_original_sample_rate:
+        :return: dictionary with augmented audio files as values and their str names as keys
+        """
         noises_types_dict = {
             "household": self.household_noises,
             "pets": self.pets_noises,
@@ -218,8 +227,7 @@ class Augmentator:
         if True in list(noises_types_dict.values()):
 
             # audio
-            (audio_to_augment_tensor,
-             filename) = self.input_data_preprocessing(
+            audio_to_augment_tensor, filename = self.input_data_preprocessing(
                 input_data=audio_to_augment_input,
                 temp_filename=generated_filename,
                 temp_sample_rate=file_original_sample_rate
@@ -260,6 +268,7 @@ class Augmentator:
                 filename_mixed = f'{filename}_mixed.wav'
                 try:
                     if len(noise_to_mix_tensors) < 3:
+                        assert False, "Not reachable"
                         augmented_audiofiles[
                             filename_mixed] = 'You chose no noise types to mix or you chose only one type.'
                     elif len(noise_to_mix_tensors) >= 3:
