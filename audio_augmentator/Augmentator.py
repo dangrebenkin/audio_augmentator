@@ -7,11 +7,10 @@ import string
 import torchaudio
 import numpy as np
 from pathlib import Path
-from datasets import DatasetDict
 from pysndfx import AudioEffectsChain
+from typing import Dict, Union, Tuple
 from .utils import (
     tensor_normalization,
-    BaseNoiseDataset,
     get_composed_dataset
 )
 
@@ -21,7 +20,7 @@ class Augmentator:
     def __init__(
             self,
             noises_dataset: str,
-            silero_vad_model_path: str = None,
+            silero_vad_model_path: str = None,  # TODO remove
             decibels: float = 10.0,
             household_noises: bool = False,
             pets_noises: bool = False,
@@ -38,29 +37,24 @@ class Augmentator:
             wet_only: bool = False
     ):
 
-        self.device = torch.device("cpu")
-        self.model = None
-        if silero_vad_model_path is not None:
-            model = torch.jit.load(silero_vad_model_path,
-                                   map_location=self.device)
-            self.model = model.to(self.device)
+        self.device = torch.device("cpu")  # TODO why always cpu?
 
         assert os.path.isdir(noises_dataset), f'"{noises_dataset}" does not exist!'
         self.noises_dataset = get_composed_dataset(noises_dataset)
-        self.resampler = torchaudio.transforms.Resample(new_freq=16000).to(self.device)
         self.overlayer = torchaudio.transforms.AddNoise().to(self.device)
         self.sample_rate = 16000
-        self.nperseg = int(self.sample_rate / 100)
-        self.interval = int(3.0 * self.sample_rate)
+        self.resampler = torchaudio.transforms.Resample(new_freq=self.sample_rate).to(self.device)
+
         self.two_ways_of_overlay = ['loop', 'random_position']
         self.window_size_samples = 1024
-
         self.decibels = decibels
+
         self.household_noises = household_noises
         self.pets_noises = pets_noises
         self.speech_noises = speech_noises
         self.background_music_noises = background_music_noises
         self.to_mix = to_mix
+
         if self.to_mix:
             number_of_noises_to_mix = sum([background_music_noises, household_noises, pets_noises, speech_noises])
             assert number_of_noises_to_mix >= 2, \
@@ -88,35 +82,29 @@ class Augmentator:
 
     def input_data_preprocessing(
             self,
-            input_data,
+            input_data: Union[str, np.typing.NDarray, torch.Tensor],
             temp_filename: str,
             temp_sample_rate: int
-    ) -> torch.tensor:
+    ) -> Tuple[torch.Tensor, str]:
 
         input_format = type(input_data).__name__
         final_filename = temp_filename
         defined_sample_rate = temp_sample_rate
 
-        try:
-            if input_format == 'str':
-                final_filename = Path(input_data).stem
-                preprocessed_data, defined_sample_rate = torchaudio.load(input_data, normalize=True)
-            elif input_format == 'Tensor':
-                preprocessed_data = input_data
-                if preprocessed_data.size()[0] != 1:
-                    preprocessed_data = torch.unsqueeze(preprocessed_data, 0)
-            elif input_format == 'ndarray':
-                preprocessed_data = np.float32(input_data)
-                preprocessed_data = torch.from_numpy(preprocessed_data)
-                if preprocessed_data.size()[0] != 1:
-                    preprocessed_data = torch.unsqueeze(preprocessed_data, 0)
-            else:
-                preprocessed_data = (f'Expected str, tensor or numpy.ndarray format,'
-                                     f'got {input_format}')
-                return preprocessed_data, final_filename
-        except BaseException as err:
-            preprocessed_data = str(err)
-            return preprocessed_data, final_filename
+        if input_format == 'str':
+            final_filename = Path(input_data).stem
+            preprocessed_data, defined_sample_rate = torchaudio.load(input_data, normalize=True)
+        elif input_format == 'Tensor':
+            preprocessed_data = input_data
+            if preprocessed_data.size()[0] != 1:
+                preprocessed_data = torch.unsqueeze(preprocessed_data, 0)
+        elif input_format == 'ndarray':
+            preprocessed_data = np.float32(input_data)
+            preprocessed_data = torch.from_numpy(preprocessed_data)
+            if preprocessed_data.size()[0] != 1:
+                preprocessed_data = torch.unsqueeze(preprocessed_data, 0)
+        else:
+            raise ValueError(f'Expected str, tensor or numpy.ndarray format, got {input_format}')
 
         preprocessed_data = tensor_normalization(preprocessed_data)
         preprocessed_data.to(self.device)
@@ -161,8 +149,8 @@ class Augmentator:
         return reverbed_result
 
     def augmentation_overlay(self,
-                             original_audio_tensor: torch.tensor,
-                             prepared_noise_audio_tensor: torch.tensor) -> torch.tensor:
+                             original_audio_tensor: torch.Tensor,
+                             prepared_noise_audio_tensor: torch.Tensor) -> torch.Tensor:
         overlay_result = None
         random_choice = random.choice(self.two_ways_of_overlay)
         audio_to_augment_duration = len(original_audio_tensor[0]) / float(self.sample_rate)
@@ -204,11 +192,11 @@ class Augmentator:
 
     def augmentate(
             self,
-            audio_to_augment_input,
+            audio_to_augment_input: Union[str, np.typing.NDarray, torch.Tensor],
             file_original_sample_rate: int = 16000
-    ) -> dict[str, torch.tensor]:
+    ) -> Dict[str, torch.Tensor]:
         """
-        :param audio_to_augment_input:
+        :param audio_to_augment_input: array or path to audio to augment
         :param file_original_sample_rate:
         :return: dictionary with augmented audio files as values and their str names as keys
         """
