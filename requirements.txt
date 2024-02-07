@@ -1,4 +1,6 @@
+--find-links https://download.pytorch.org/whl/cpu
 numpy==1.23.5
+torch==2.0.1
 scipy~=1.10.1
 datasets
 pysndfx~=0.3.6
@@ -7,3 +9,5 @@ tqdm~=4.65.0
 sox~=1.4.1
 librosa==0.10.0
 soundfile==0.12.1
+pytest==8.0.0
+torchaudio==2.0.2

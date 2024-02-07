@@ -5,16 +5,17 @@ import torch
 
 from audio_augmentator import Augmentator
 
+NOISES_DATASET_PATH = r'C:\Users\LimpWinter\Documents\Projects\audio_augmentator\noises_dataset_2'
+
 
 def test_augmenter_init():
     augmenter = Augmentator(
-        noises_dataset='./processed_noises_dataset',
+        noises_dataset=NOISES_DATASET_PATH,
         decibels=10.0
     )
     assert augmenter is not None
 
     assert augmenter.noises_dataset is not None
-    assert augmenter.model is None
     assert augmenter.decibels == 10.0
     assert augmenter.household_noises is False
     assert augmenter.pets_noises is False
@@ -24,7 +25,7 @@ def test_augmenter_init():
 
 def test_augmenter_gives_all_noises():
     augmenter = Augmentator(
-        noises_dataset='./processed_noises_dataset',
+        noises_dataset=NOISES_DATASET_PATH,
         decibels=10.0,
         household_noises=True,
         pets_noises=True,
@@ -42,7 +43,7 @@ def test_augmenter_gives_all_noises():
 
 def test_augmenter_gives_no_noises():
     augmenter = Augmentator(
-        noises_dataset='./processed_noises_dataset',
+        noises_dataset=NOISES_DATASET_PATH,
         decibels=10.0
     )
     sample = torch.randn((1, 16_000))
@@ -53,7 +54,7 @@ def test_augmenter_gives_no_noises():
 
 def test_augmenter_keeps_audio_shape():
     augmenter = Augmentator(
-        noises_dataset='./processed_noises_dataset',
+        noises_dataset=NOISES_DATASET_PATH,
         decibels=10.0,
         household_noises=True,
         pets_noises=True,
@@ -72,7 +73,7 @@ def test_augmenter_keeps_audio_shape():
 
 def test_augmenter_changes_audio():
     augmenter = Augmentator(
-        noises_dataset='./processed_noises_dataset',
+        noises_dataset=NOISES_DATASET_PATH,
         decibels=5.0,
         household_noises=True,
         pets_noises=True,
@@ -91,7 +92,7 @@ def test_augmenter_changes_audio():
 
 def test_augmenter_household_noises():
     augmenter = Augmentator(
-        noises_dataset='./processed_noises_dataset',
+        noises_dataset=NOISES_DATASET_PATH,
         decibels=5.0,
         household_noises=True,
     )
@@ -109,7 +110,7 @@ def test_augmenter_household_noises():
 
 def test_augmenter_pets_noises():
     augmenter = Augmentator(
-        noises_dataset='./processed_noises_dataset',
+        noises_dataset=NOISES_DATASET_PATH,
         decibels=5.0,
         pets_noises=True,
     )
@@ -127,7 +128,7 @@ def test_augmenter_pets_noises():
 
 def test_augmenter_speech_noises():
     augmenter = Augmentator(
-        noises_dataset='./processed_noises_dataset',
+        noises_dataset=NOISES_DATASET_PATH,
         decibels=5.0,
         speech_noises=True,
     )
@@ -145,7 +146,7 @@ def test_augmenter_speech_noises():
 
 def test_augmenter_background_music_noises():
     augmenter = Augmentator(
-        noises_dataset='./processed_noises_dataset',
+        noises_dataset=NOISES_DATASET_PATH,
         decibels=5.0,
         background_music_noises=True,
     )
@@ -164,20 +165,20 @@ def test_augmenter_background_music_noises():
 def test_no_noises_to_mix():
     with pytest.raises(AssertionError):
         _ = Augmentator(
-            noises_dataset='./processed_noises_dataset',
+            noises_dataset=NOISES_DATASET_PATH,
             decibels=5.0,
             to_mix=True
         )
     with pytest.raises(AssertionError):
         _ = Augmentator(
-            noises_dataset='./processed_noises_dataset',
+            noises_dataset=NOISES_DATASET_PATH,
             decibels=5.0,
             household_noises=True,
             to_mix=True
         )
     with pytest.raises(AssertionError):
         _ = Augmentator(
-            noises_dataset='./processed_noises_dataset',
+            noises_dataset=NOISES_DATASET_PATH,
             decibels=5.0,
             speech_noises=True,
             to_mix=True

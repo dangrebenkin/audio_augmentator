@@ -6,13 +6,16 @@ import random
 import string
 import torchaudio
 import numpy as np
+import numpy.typing as npt
 from pathlib import Path
 from pysndfx import AudioEffectsChain
-from typing import Dict, Union, Tuple
+from typing import Dict, Union, Tuple, Optional
 from .utils import (
     tensor_normalization,
     get_composed_dataset
 )
+
+
 
 
 class Augmentator:
@@ -33,13 +36,13 @@ class Augmentator:
             stereo_depth: int = 100,
             pre_delay: int = 20,
             wet_gain: int = 0,
-            wet_only: bool = False
+            wet_only: bool = False,
+            device: str = "cpu"
     ):
-
-        self.device = torch.device("cpu")  # TODO why always cpu?
 
         assert os.path.isdir(noises_dataset), f'"{noises_dataset}" does not exist!'
         self.noises_dataset = get_composed_dataset(noises_dataset)
+        self.device = device
         self.overlayer = torchaudio.transforms.AddNoise().to(self.device)
         self.sample_rate = 16000
         self.resampler = torchaudio.transforms.Resample(new_freq=self.sample_rate).to(self.device)
@@ -114,11 +117,11 @@ class Augmentator:
 
     def reverberate(
             self,
-            audio_to_reverb_input,
+            audio_to_reverb_input: Union[str, npt.NDArray, torch.Tensor],
             file_original_sample_rate: int = 16000
-    ) -> dict:
+    ) -> Dict[str, torch.Tensor]:
 
-        reverbed_result = {}
+        reverbed_result: Dict[str, torch.Tensor] = {}
         generated_filename = ''.join(random.choices(string.ascii_lowercase, k=5))
 
         if self.to_reverb:
@@ -132,25 +135,26 @@ class Augmentator:
                 reverbed_result[filename] = audio_to_reverb
                 return reverbed_result
             reverbed_audio_name = f'{filename}_reverbed.wav'
-            try:
-                reverbed_audio_array = self.reverberator(
-                    audio_to_reverb[0].numpy(),
-                    sample_in=self.sample_rate,
-                    sample_out=self.sample_rate
-                )
-                reverbed_audio_array = np.float32(reverbed_audio_array)
-                reverbed_audio_tensor = torch.unsqueeze(torch.from_numpy(reverbed_audio_array), 0)
-                reverbed_audio_tensor = tensor_normalization(reverbed_audio_tensor)
-                reverbed_result[reverbed_audio_name] = reverbed_audio_tensor
-            except BaseException as err:
-                reverbed_result[reverbed_audio_name] = str(err)
+
+            reverbed_audio_array = self.reverberator(
+                audio_to_reverb[0].numpy(),
+                sample_in=self.sample_rate,
+                sample_out=self.sample_rate
+            )
+            reverbed_audio_array = np.float32(reverbed_audio_array)
+            reverbed_audio_tensor = torch.unsqueeze(torch.from_numpy(reverbed_audio_array), 0)
+            reverbed_audio_tensor = tensor_normalization(reverbed_audio_tensor)
+            reverbed_result[reverbed_audio_name] = reverbed_audio_tensor
 
         return reverbed_result
 
-    def augmentation_overlay(self,
-                             original_audio_tensor: torch.Tensor,
-                             prepared_noise_audio_tensor: torch.Tensor) -> torch.Tensor:
-        overlay_result = None
+    def augmentation_overlay(
+            self,
+            original_audio_tensor: torch.Tensor,
+            prepared_noise_audio_tensor: torch.Tensor
+    ) -> torch.Tensor:
+
+        overlay_result: Optional[torch.Tensor] = None
         random_choice = random.choice(self.two_ways_of_overlay)
         audio_to_augment_duration = len(original_audio_tensor[0]) / float(self.sample_rate)
         noise_file_duration = len(prepared_noise_audio_tensor[0]) / float(self.sample_rate)
@@ -162,9 +166,11 @@ class Augmentator:
             loop_cat = prepared_noise_audio_tensor.repeat(1, repeat_times)
             loop_cat_to_insert = torch.unsqueeze(loop_cat[0][0:audio_to_augment_tensor_length], 0)
             loop_cat_to_insert.to(self.device)
-            overlay_result = self.overlayer(original_audio_tensor,
-                                            noise=loop_cat_to_insert,
-                                            snr=torch.tensor([self.decibels]))
+            overlay_result = self.overlayer(
+                original_audio_tensor,
+                noise=loop_cat_to_insert,
+                snr=torch.tensor([self.decibels])
+            )
 
         elif random_choice == 'random_position':
             bound = 1 - (noise_file_duration / audio_to_augment_duration)

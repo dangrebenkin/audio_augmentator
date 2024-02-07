@@ -6,12 +6,13 @@ from typing import Callable, List
 import warnings
 import os
 import torchaudio
+import numpy.typing as npt
 from torch.utils.data import Dataset
 from datasets import DatasetDict
 
 
 def signal_energy_noise_search(
-        audio_noise_numpy_array: np.ndarray,
+        audio_noise_numpy_array: npt.NDArray,
         sample_rate: int = 16_000
 ) -> np.ndarray:
     sample_rate = sample_rate
@@ -243,16 +244,16 @@ def collect_chunks(
     return torch.cat(chunks)
 
 
-def tensor_normalization(input_tensor: torch.tensor) -> torch.tensor:
+def tensor_normalization(input_tensor: torch.Tensor) -> torch.Tensor:
     if torch.max(torch.abs(input_tensor)).item() > 1.0:
         input_tensor /= torch.max(torch.abs(input_tensor))
     return input_tensor
 
 
 def preprocess_speech(
-        speech_array: np.ndarray,
+        speech_array: npt.NDArray,
         vad_model
-) -> torch.tensor:
+) -> torch.Tensor:
     noise_to_mix_tensor = torch.from_numpy(np.float32(speech_array))
     noise_to_mix_tensor = tensor_normalization(noise_to_mix_tensor)
 
