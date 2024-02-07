@@ -5,7 +5,7 @@ import torch
 
 from audio_augmentator import Augmentator
 
-NOISES_DATASET_PATH = r'C:\Users\LimpWinter\Documents\Projects\audio_augmentator\noises_dataset_2'
+NOISES_DATASET_PATH = './processed_noises_dataset'
 
 
 def test_augmenter_init():
