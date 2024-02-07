@@ -20,7 +20,6 @@ class Augmentator:
     def __init__(
             self,
             noises_dataset: str,
-            silero_vad_model_path: str = None,  # TODO remove
             decibels: float = 10.0,
             household_noises: bool = False,
             pets_noises: bool = False,
@@ -82,7 +81,7 @@ class Augmentator:
 
     def input_data_preprocessing(
             self,
-            input_data: Union[str, np.typing.NDarray, torch.Tensor],
+            input_data: Union[str, np.ndarray, torch.Tensor],
             temp_filename: str,
             temp_sample_rate: int
     ) -> Tuple[torch.Tensor, str]:
@@ -192,7 +191,7 @@ class Augmentator:
 
     def augmentate(
             self,
-            audio_to_augment_input: Union[str, np.typing.NDarray, torch.Tensor],
+            audio_to_augment_input: Union[str, np.ndarray, torch.Tensor],
             file_original_sample_rate: int = 16000
     ) -> Dict[str, torch.Tensor]:
         """
@@ -257,8 +256,6 @@ class Augmentator:
                 try:
                     if len(noise_to_mix_tensors) < 3:
                         assert False, "Not reachable"
-                        augmented_audiofiles[
-                            filename_mixed] = 'You chose no noise types to mix or you chose only one type.'
                     elif len(noise_to_mix_tensors) >= 3:
                         noises_mix = noise_to_mix_tensors[1]
                         for n in noise_to_mix_tensors[2::]:
