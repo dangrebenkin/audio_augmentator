@@ -1,10 +1,10 @@
 from datasets import DatasetDict
-from .audio_augmentator.utils import get_speech_timestamps, collect_chunks, tensor_normalization, \
+from audio_augmentator.utils import get_speech_timestamps, collect_chunks, tensor_normalization, \
     signal_energy_noise_search
 import torch
 import numpy as np
 
-noises_dataset_path = r'C:\Users\LimpWinter\Documents\Projects\audio_augmentator\noises_dataset'
+noises_dataset_path = r'/mnt/c/Users/user/Documents/Projects/audio_augmentator/noises_dataset'
 noises_dataset = DatasetDict.load_from_disk(dataset_dict_path=noises_dataset_path)
 
 speech = noises_dataset['speech_noises']

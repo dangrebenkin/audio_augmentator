@@ -13,8 +13,8 @@ from datasets import DatasetDict
 
 def signal_energy_noise_search(
         audio_noise_numpy_array: npt.NDArray,
-        sample_rate: int = 16_000
-) -> np.ndarray:
+        sample_rate: int = 16_000) -> np.ndarray:
+
     sample_rate = sample_rate
     interval = int(3.0 * sample_rate)
     nperseg = int(sample_rate / 100)
@@ -93,8 +93,8 @@ def get_speech_timestamps(
         window_size_samples: int = 512,
         speech_pad_ms: int = 30,
         return_seconds: bool = False,
-        progress_tracking_callback: Callable[[float], None] = None
-):
+        progress_tracking_callback: Callable[[float], None] = None):
+
     if not torch.is_tensor(input_audio):
         try:
             input_audio = torch.Tensor(input_audio)

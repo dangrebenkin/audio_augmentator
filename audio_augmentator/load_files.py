@@ -45,11 +45,6 @@ datasets_info = {
         "path": ".",
         "checkpoint_name": "dataset_dict.json"
     }
-    # "vad_model": {
-    #     "link": "https://disk.yandex.ru/d/J3cnq54nlR2J4A",
-    #     "path": ".",
-    #     "checkpoint_name": "silero_vad.jit"
-    # },
 }
 
 for corpus_name, dataset_params in datasets_info.items():

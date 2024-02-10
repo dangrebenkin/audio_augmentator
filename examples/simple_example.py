@@ -3,7 +3,6 @@ import torchaudio
 from audio_augmentator import Augmentator
 
 augmentator_object = Augmentator(noises_dataset='/home/user/documents/projects/audio_augmentator/noises_dataset',
-                                 silero_vad_model_path='/home/user/documents/projects/audio_augmentator/silero_vad.jit',
                                  decibels=10.0,
                                  household_noises=True,
                                  pets_noises=True,

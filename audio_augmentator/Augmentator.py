@@ -16,8 +16,6 @@ from .utils import (
 )
 
 
-
-
 class Augmentator:
 
     def __init__(

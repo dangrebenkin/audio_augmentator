@@ -1,21 +1,19 @@
-import torch
 import torchaudio
 from multiprocessing import Pool, cpu_count
 from audio_augmentator import Augmentator
 
 cores_number = cpu_count()
 augmentation_tool = Augmentator(
-    noises_dataset='/mnt/c/Users/LimpWinter/Documents/Projects/audio_augmentator/noises_dataset',
-    silero_vad_model_path='/mnt/c/Users/LimpWinter/Documents/Projects/audio_augmentator/silero_vad.jit',
+    noises_dataset='/mnt/c/Users/user/Documents/Projects/audio_augmentator/noises_dataset',
     decibels=5.0,
     speech_noises=True
 )
 pool = Pool(processes=cores_number)
 file_names = [
-    '/mnt/c/Users/LimpWinter/Documents/Projects/audio_augmentator/qmoaj_mixed.wav.wav',
-    '/mnt/c/Users/LimpWinter/Documents/Projects/audio_augmentator/qmoaj_mixed.wav.wav'
+    '/mnt/c/Users/user/Documents/Projects/audio_augmentator/qmoaj_mixed.wav.wav',
+    '/mnt/c/Users/user/Documents/Projects/audio_augmentator/qmoaj_mixed.wav.wav'
 ]
-# file_names = [torch.randn((1, 1024)), torch.randn((1, 1024))]
+
 all_results = {}
 for result in pool.map(augmentation_tool.augmentate, file_names):
     all_results.update(result)
