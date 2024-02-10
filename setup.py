@@ -12,7 +12,7 @@ class PostInstallCommand(install):
 
 setup(
     name='audio_augmentator',
-    version='0.3.2',
+    version='0.4',
     description='a Python library for audio augmentation',
     url='https://github.com/dangrebenkin/audio_augmentator',
     author='Daniel Grebenkin',

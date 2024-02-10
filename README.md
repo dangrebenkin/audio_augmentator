@@ -194,3 +194,8 @@ reverbed_sound  # {'<wav_to_reverb>_reverbed.wav': <torch.tensor>}
    email = {hello@silero.ai}
    }
 
+### Благодарности
+
+[Артему Болдинову aka LimpWinter](https://github.com/limpwinter) за рефакторинг, тестирование и 
+подготовку новой версии библиотеки.
+
