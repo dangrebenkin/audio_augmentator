@@ -41,15 +41,15 @@ def load_dataset_from_yandex_disk(load_url,
 
 datasets_info = {
     "noises_corpus": {
-        "link": "https://disk.yandex.ru/d/z24vJQQiuSZO4w",
-        "path": "./noises_dataset",
-        "checkpoint_name": "dataset_dict.json"
-    },
-    "vad_model": {
-        "link": "https://disk.yandex.ru/d/J3cnq54nlR2J4A",
+        "link": "https://disk.yandex.ru/d/Ulgj-w9QiFy-Gw",
         "path": ".",
-        "checkpoint_name": "silero_vad.jit"
-    },
+        "checkpoint_name": "dataset_dict.json"
+    }
+    # "vad_model": {
+    #     "link": "https://disk.yandex.ru/d/J3cnq54nlR2J4A",
+    #     "path": ".",
+    #     "checkpoint_name": "silero_vad.jit"
+    # },
 }
 
 for corpus_name, dataset_params in datasets_info.items():
