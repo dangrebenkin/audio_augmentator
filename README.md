@@ -1,24 +1,51 @@
 ## Аугментатор аудиофайлов
 
-Библиотека для аугментации аудиозаписей в формате моно WAV PCM, частота дискретизации 8 или 16 кГц.
+Библиотека для аугментации, реверберации и сжатия аудиозаписей в формате моно WAV PCM, частота дискретизации 8 или 16 кГц.
 
-Аугментатор способен создавать зашумленные аудиозаписи с эффектом реверберации или с фоновым шумом:
+### Входные и выходные данные
 
-1. Для получения эффекта реверберации используется
-   библиотека [pysndfx](https://github.com/carlthome/python-audio-effects)
-   c настраиваемыми параметрами глубины, уменьшения высоких частот и т.п.
-2. Корпус доступных фоновых шумов содержит 4 типа аудиозаписей:
-    - Бытовые (стук столовых приборов, шум работающей стиральной машинки хлопок межкомнатной двери и др.);
-    - Шумы домашних животных (мяуканье кошек, лай собак и др.);
-    - Речеподобные шумы (фоновая речь других людей, шум телевизора или радио и др.);
-    - Музыкальные шумы (фоновая музыка и др.).
+Аугментатор принимает на вход данные в 4 форматах:
+- путь к файлу (str);
+- torch.Tensor;
+- numpy.ndarray;
+- datasets.Dataset (или datasets.DatasetDict).
+
+На выходе в первых трех случаях пользователь получает словарь, где ключ -- тип подмешанного шума | примененный эффект (реверберация или компрессия) в зависимости от настроек. В случае datasets.Dataset пользователь получает на выходе датасет, но с аналогичными полями у каждого сэмпла. В качестве значения по ключу в результате всегда лежит torch.Tensor. 
+
+### Установка
+
+```
+sudo apt-get install sox
+pip install setuptools
+git clone https://gitverse.ru/dangrebenkin/audio_augmentator
+cd audio_augmentator
+python setup.py install
+```
+
+### Скачивание корпуса шумов
+
+Для скачивания корпуса шумов для аугментации необходимо воспользоваться скриптом load_files.py:
+```bash
+python ./audio_augmentator/load_files.py
+```
+
+### Аугментация
+
+Аугментатор способен создавать зашумленные аудиозаписи с эффектом реверберации или с фоновым шумом. Корпус доступных фоновых шумов содержит 6 типов звуковых сигналов для микширования:
+- `household`. Бытовые (стук столовых приборов, шум работающей стиральной машинки хлопок межкомнатной двери и др.);
+- `animals`. Шумы животных (мяуканье кошек, лай собак и др.);
+- `speech`. Речеподобные шумы (фоновая речь других людей, шум телевизора или радио и др.);
+- `background_music`. Музыкальные шумы (фоновая музыка и др.);
+- `air_transport`. Шумы авиатранспорта (Звуки двигателей самолетов, шум винтов, звуки аэропортов и т.п.);
+- `rail_transport`. Шумы рельсового транспорта (Звуки рельс, подвижного состава поездов (в т.ч. паравозов)).
 
 Корпус шумов был сформирован из нескольких источников:
 
 - [Animal-Sound-Dataset](https://github.com/YashNita/Animal-Sound-Dataset);
-- [Freesound Audio Tagging 2019](https://www.kaggle.com/competitions/freesound-audio-tagging-2019/data).
+- [Freesound Audio Tagging 2019](https://www.kaggle.com/competitions/freesound-audio-tagging-2019/data);
+- [Audioset-Nonspeech](https://huggingface.co/datasets/bond005/audioset-nonspeech).
 
-Шумовые аудиозаписи могут быть «подмешаны» в различных сочетаниях с настраиваемым значением соотношения сигнал-шум
+Шумовые аудиозаписи могут быть «подмешаны» (смикшированы) в различных сочетаниях с настраиваемым значением соотношения сигнал-шум
 (в децибелах) одним из двух способов, который выбирается случайно (с помощью инструментов библиотеки random):
 
 1. Если в результате случайного выбора избирается способ «цикла» («loop»), то вычисляется число необходимых
@@ -34,7 +61,17 @@
    (новый шумовой аудиосигнал обрезается по моменту окончания входного аудиосигнала) и выбранного пользователем
    соотношения сигнал-шум.
 
-### Описание предобработки датасета шумов
+Тип микширования можно выбрать самостоятельно с помощью метода `set_augmentator_settings`, см. полное описание [здесь](https://gitlab.sibnn.ai/research/audio_augmentator/-/blob/main/audio_augmentator/augmentator.py?ref_type=heads#L147).
+
+#### Пример использования:
+
+```python
+augmentation_tool = Augmentator(noises_dataset='noises_dataset')  # создаем объект класса Augmentator, обязательно указываем путь к папке с корпусом шумов
+augmentation_tool.set_augmentator_settings(snr_db=10, sample_rate=16000, noises={"background_music": True, 'household': True}) # обязательно указываем соотношение сигнал-шум (в дБ), типы желаемых шумов и частоту дискретизации аудио
+results = augmentation_tool.run(audio_data, augment=True) # применяем, получаем результат
+```
+      
+#### Описание предобработки датасета шумов
 
 В процессе формирования корпуса шумовых аудиозаписей файлы длительностью менее 3 секунд сохранялись для участия
 в аугментации целиком; если шумовая аудиозапись имела длительность более 3 секунд, то из такого сигнала несколькими
@@ -49,153 +86,28 @@
        После окончания подготовки шумового аудиофрагмента или аудиофайла целиком шумовая аудиозапись может быть
        «подмешана» во входную аудиозапись 
 
-### Установка
+### Реверберация
 
-```
-sudo apt-get install sox
-git clone https://github.com/dangrebenkin/audio_augmentator
-cd audio_augmentator
-python setup.py install
-```
+Для получения эффекта реверберации используется библиотека [pysndfx](https://github.com/carlthome/python-audio-effects) c настраиваемыми параметрами глубины, уменьшения высоких частот и т.п. При использовании реверберации ее параметры можно настроить как самому, так и выбрать один из пресетов с помощью метода `set_reverberator_settings`, пример:
 
-**При установке автоматически скачивается предобработанный корпус шумов.**
-
-### Тестирование 
-Для базового тестирования используется бибилиотека `pytest` и следующая команда:
-```bash
-python -m pytest tests/
+```python
+augmentation_tool.set_reverberator_settings(sample_rate=16000, reverberation_preset='loud')
+reverb_results = augmentation_tool.run(test_dataset, reverberate=True)
 ```
 
-### Алгоритм использования
+Заранее подготовленные пресеты:
+- **loud**: моделируется реверберация в большой комнате с долгим затуханием высоких частот;
+- **medium**: моделируется реверберация в небольшой комнате;
+- **quiet**: моделируется реверберация в маленькой комнате с уровнем громкости меньше уровня исходного сигнала.
 
-#### **1. Создать экземпляр класса _Augmentator_ с необходимыми параметрами:**
+Полное описание настроек можно найти [здесь](https://gitlab.sibnn.ai/research/audio_augmentator/-/blob/main/audio_augmentator/augmentator.py?ref_type=heads#L70).
 
-```
-from audio_augmentator import Augmentator
+### Искусственное сжатие аудио
 
-augmentator_object = Augmentator(
-    noises_dataset=<path to dataset>,
-    ...
-)
-```
-Настраиваемые параметры:
+Для моделирования плохого качества звучания аудио была добавлена функция сжатия, где исходный сигнал сохраняется с максимальным сжатием(низким битрейтом) как mp3-файл и затем снова преобразуется в torch.Tensor. Пример использования:
 
-**Обязательный параметр (всегда):**
-
-* `noises_dataset` : полный путь к датасету шумов _noises_dataset_, который скачивается автоматически при установке
-  библиотеки;
-
-**Список дополнительных параметров:**
-
-* `decibels`: соотношение сигнал-шум (в дБ), (**опционально**) по умолчанию = 10.0;
-* `household_noises`: установить True для получения аудио, аугментированных бытовыми шумами (**опционально**), по
-  умолчанию = False;
-* `pets_noises`: установить True для получения аудио, аугментированных шумами животных (**опционально**), по умолчанию =
-  False;
-* `speech_noises`: установить True для получения аудио, аугментированных речеподобными шумами (**опционально**), по
-  умолчанию = False;
-* `background_music_noises`: установить True для получения аудио, аугментированных музыкальными шумами (**опционально
-  **), по умолчанию = False;
-* `to_mix`: установить True для получения аудио, аугментированных несколькими типами шумамов (для срабатывания
-  необходимо, чтобы >= 2 типов шумов (`household_noises`, `pets_noises`, `speech_noises`, `background_music_noises`)
-  были установлены в True) (
-  **опционально**), по умолчанию = False;
-* `to_reverb`: установить True для получения аудио, аугментированных ревербационными шумами (**always required for
-  reverberation**), по умолчанию = False.
-
-**Также доступно изменения параметров из библиотеки pysndfx для настройки реверберации:**
-
-* `reverberance`: (**опционально**) по умолчанию = 50;
-* `hf_damping`: (**опционально**) по умолчанию = 50;
-* `room_scale`: (**опционально**) по умолчанию = 100;
-* `stereo_depth`: (**опционально**) по умолчанию = 100;
-* `pre_delay`: (**опционально**) по умолчанию = 20;
-* `wet_gain`: (**опционально**) по умолчанию = 0;
-* `wet_only`: (**опционально**) по умолчанию = False).
-
-Примеры:
-
-1. Инициализация объекта класса _Augmentator_ для аугментации:
-
-```
-from audio_augmentator import Augmentator
-
-augmentator_object_1 = Augmentator(
-    noises_dataset=noises_dataset,
-    decibels=5.0,
-    speech_noises=True,
-    background_music_noises=True
-)
+```python
+reverb_results = augmentation_tool.run(test_dataset, compress=True)
 ```
 
-2. Инициализация объекта класса _Augmentator_ для реверберации:
-
-```
-from audio_augmentator import Augmentator
-
-augmentator_object_2 = Augmentator(
-    noises_dataset=noises_dataset,
-    to_reverb=True,
-    room_scale=80
-)
-```
-
-3. Инициализация объекта класса _Augmentator_ для реверберации и аугментации:
-
-```
-from audio_augmentator import Augmentator
-
-augmentator_object_3 = Augmentator(
-    noises_dataset=noises_dataset,
-    to_reverb=True,
-    room_scale=80,
-    decibels=15.0,
-    background_music_noises=True
-)
-```
-
-#### **2. Применить функцию reverberate() и/или augmentate() к аудио**
-
-```
-augmented_sound = augmentator_object_1.augmentate(audio_to_augment_input='wav_to_augment.wav', 
-                                                  file_original_sample_rate=16000)
-reverbed_sound = augmentator_object_2.reverberate(audio_to_reverb_input='wav_to_reverb.wav', 
-                                                  file_original_sample_rate=16000)
-augmented_sound  # {'<wav_to_augment>_household_noises_5.wav': <torch.tensor>, 
-                    '<wav_to_augment>_background_music_noise_5.wav': <torch.tensor>}
-reverbed_sound  # {'<wav_to_reverb>_reverbed.wav': <torch.tensor>}
-```
-
-**(!)** В качестве входного аудио (параметры `audio_to_augment_input=` and `audio_to_reverb_input=`) можно подать данные
-следующих типов:
-
-1) string path to audiofile;
-2) torch.Tensor;
-3) numpy.Ndarray.
-
-**(!)** Параметр `file_original_sample_rate=` (**опционально**) 16000 по умолчанию, но он может быть изменен в
-соответствии с оригинальной частотой дискретизации входного аудио файла.
-
-**(!)** Больше примеров использования аугментатора можно найти в папке `examples`.
-
-### Ссылки
-
-1. Eduardo Fonseca, Manoj Plakal, Frederic Font, Daniel P. W. Ellis, Xavier Serra. Audio tagging with noisy labels and
-   minimal supervision. In Proceedings of DCASE2019 Workshop, NYC, US (2019). URL: https://arxiv.org/abs/1906.02975
-2. @misc{Silero VAD,
-   author = {Silero Team},
-   title = {Silero VAD: pre-trained enterprise-grade Voice Activity Detector (VAD), Number Detector and Language
-   Classifier},
-   year = {2021},
-   publisher = {GitHub},
-   journal = {GitHub repository},
-   howpublished = {\url{https://github.com/snakers4/silero-vad}},
-   commit = {insert_some_commit_here},
-   email = {hello@silero.ai}
-   }
-
-### Благодарности
-
-[Артему Болдинову aka LimpWinter](https://github.com/limpwinter) за рефакторинг, тестирование и 
-подготовку новой версии библиотеки.
 

@@ -16,7 +16,6 @@ def load_dataset_from_yandex_disk(load_url,
     response = requests.get(final_url)
     download_url = response.json()['href']
 
-    print(f"Start downloading file {load_url}")
     response = requests.get(download_url, stream=True)
     total = int(response.headers.get('content-length', 0))
 
@@ -24,7 +23,7 @@ def load_dataset_from_yandex_disk(load_url,
         try:
             bytes_input = BytesIO()
 
-            with tqdm(desc=dataset_name, total=total, unit='iB', unit_scale=True, unit_divisor=1024) as bar:
+            with tqdm(desc=f'Downloading {dataset_name}', total=total, unit='iB', unit_scale=True, unit_divisor=1024) as bar:
                 for data in response.iter_content(chunk_size=1024 * 1024):
                     size = bytes_input.write(data)
                     bar.update(size)
@@ -40,15 +39,13 @@ def load_dataset_from_yandex_disk(load_url,
 
 
 datasets_info = {
-    "noises_corpus": {
-        "link": "https://disk.yandex.ru/d/Ulgj-w9QiFy-Gw",
-        "path": ".",
-        "checkpoint_name": "dataset_dict.json"
+    "noises_dataset": {
+        "link": "https://disk.360.yandex.ru/d/9EBcPzDRU6d-TQ",
+        "path": "."
     }
 }
 
 for corpus_name, dataset_params in datasets_info.items():
-    if not os.path.isdir(os.path.join(dataset_params["path"], dataset_params["checkpoint_name"])):
-        load_dataset_from_yandex_disk(load_url=dataset_params["link"],
-                                      dataset_path=dataset_params["path"],
-                                      dataset_name=corpus_name)
+    load_dataset_from_yandex_disk(load_url=dataset_params["link"],
+                                    dataset_path=dataset_params["path"],
+                                    dataset_name=corpus_name)
