@@ -6,21 +6,20 @@ import subprocess
 class PostInstallCommand(install):
     def run(self):
         subprocess.call(['pip', 'install', '-r', 'requirements.txt'])
-        subprocess.call(['python', './audio_augmentator/load_files.py'])
         install.run(self)
 
 
 setup(
     name='audio_augmentator',
-    version='0.4',
-    description='a Python library for audio augmentation',
+    version='0.5',
+    description='A Python library for audio augmentation and reverberation.',
     url='https://github.com/dangrebenkin/audio_augmentator',
     author='Daniel Grebenkin',
     author_email='d.grebenkin@g.nsu.ru',
     license='Apache License Version 2.0',
     keywords=['wav', 'audio', 'augmentation', 'reverberation'],
     packages=find_packages(),
-    python_requires=r'>=3.8.0',
+    python_requires=r'>=3.10',
     cmdclass={
         'install': PostInstallCommand,
     },
