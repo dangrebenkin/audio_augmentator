@@ -17,7 +17,7 @@
 ```
 sudo apt-get install sox
 pip install setuptools
-git clone https://gitverse.ru/dangrebenkin/audio_augmentator
+git clone https://github.com/dangrebenkin/audio_augmentator
 cd audio_augmentator
 python setup.py install
 ```
